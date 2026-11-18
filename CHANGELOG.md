@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Voter list import: upload a CSV, check the detected column mapping, and
+  import. Precincts and households are created from the file and duplicates
+  are skipped (`POST /api/voters/import`, owners only).
+- Add voter, volunteer, and donor forms (`POST /api/voters`,
+  `/api/volunteers`, `/api/donors`), plus a first-run checklist on the
+  dashboard and empty states on each list.
+- Password reset by email (`/forgot-password`, `/reset-password/[token]`);
+  tokens are stored hashed and expire after one hour.
+- Volunteers can be linked to a login (`Volunteer.userId`). Accepting an
+  invite links or creates the new member's roster entry.
+- `GET /api/signup` reports whether signups are open, so the signup page can
+  say so before the form.
+
+### Changed
+
+- Canvass claims now cover the whole household, renew every minute while a
+  door is open, and release when the tab closes.
+- Members can only canvass, call, or hold claims as their own volunteer
+  entry; owners can still act for anyone.
+- Members no longer receive donation counts or fundraising totals from the
+  voters and dashboard APIs.
+- Landing page, auth pages, and app shell redesigned against `DESIGN.md`.
+
 ## [1.0.0-rc.1] - 2026-07-02
 
 First release candidate. CampaignGround has grown from a single-tenant demo

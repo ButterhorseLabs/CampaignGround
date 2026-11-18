@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AuthShell } from "@/components/auth/auth-shell";
 
 type InviteInfo = {
   email: string;
@@ -231,7 +232,7 @@ function InviteShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <AuthShell>
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>{title}</CardTitle>
@@ -239,6 +240,6 @@ function InviteShell({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">{children}</CardContent>
       </Card>
-    </div>
+    </AuthShell>
   );
 }

@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Calendar,
   RotateCw,
+  Plus,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { useCurrentRole } from "@/lib/memberships";
@@ -36,6 +37,7 @@ import { formatCompactCurrency, formatCurrency, formatDate, relativeTime } from 
 import { cn } from "@/lib/utils";
 import type { Donor, Donation } from "@/lib/types";
 import { RecordDonationDialog } from "@/components/donors/record-donation-dialog";
+import { AddDonorDialog } from "@/components/donors/add-donor-dialog";
 
 const CAPACITY_INFO: Record<string, { label: string; color: string }> = {
   major: { label: "Major", color: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200" },
@@ -58,6 +60,7 @@ export function DonorsView() {
   const [capacity, setCapacity] = useState("all");
   const [type, setType] = useState("all");
   const [recordOpen, setRecordOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const campaignId = useApp((s) => s.currentCampaignId);
   const role = useCurrentRole();
 
@@ -89,6 +92,8 @@ export function DonorsView() {
   // Top donors
   const topDonors = [...donors].sort((a, b) => (b.totalDonatedCents ?? 0) - (a.totalDonatedCents ?? 0)).slice(0, 5);
 
+  const noDonorsYet = !isLoading && !q && capacity === "all" && type === "all" && donors.length === 0;
+
   if (role && role !== "owner") {
     return (
       <div className="p-6 text-sm text-muted-foreground">
@@ -107,6 +112,19 @@ export function DonorsView() {
         <StatCard icon={AlertTriangle} label="Compliance flags" value={complianceIssues} sub="Needs review" accent="rose" />
       </div>
 
+      {noDonorsYet ? (
+        <Card className="p-8 md:p-12 text-center">
+          <Users className="size-6 mx-auto text-muted-foreground" aria-hidden />
+          <h2 className="mt-3 text-base font-semibold">No donors yet</h2>
+          <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
+            Add a donor, then record their donations here. Only campaign owners can see this page.
+          </p>
+          <Button type="button" className="mt-5" onClick={() => setAddOpen(true)}>
+            <Plus className="size-4 mr-1" aria-hidden /> Add donor
+          </Button>
+        </Card>
+      ) : (
+      <>
       {/* Top donors strip */}
       {topDonors.length > 0 && (
         <Card>
@@ -176,6 +194,9 @@ export function DonorsView() {
             <SelectItem value="family">Family</SelectItem>
           </SelectContent>
         </Select>
+        <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => setAddOpen(true)}>
+          <Plus className="size-3.5 mr-1" aria-hidden /> Add donor
+        </Button>
         <RecordDonationDialog
           open={recordOpen}
           onOpenChange={setRecordOpen}
@@ -298,6 +319,9 @@ export function DonorsView() {
           </div>
         </CardContent>
       </Card>
+      </>
+      )}
+      <AddDonorDialog open={addOpen} onOpenChange={setAddOpen} campaignId={campaignId} />
     </div>
   );
 }

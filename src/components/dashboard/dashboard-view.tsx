@@ -8,6 +8,8 @@ import { StatCard } from "@/components/common/stat-card";
 import { FundraisingBar } from "@/components/common/fundraising-bar";
 import { PersonAvatar } from "@/components/common/person-avatar";
 import { SupportBadge } from "@/components/common/badges";
+import { useCurrentRole } from "@/lib/memberships";
+import { ImportVotersDialog } from "@/components/voters/import-voters-dialog";
 import {
   Users,
   HeartHandshake,
@@ -21,6 +23,9 @@ import {
   Vote,
   Clock,
   MapPin,
+  Upload,
+  UserPlus,
+  Circle,
 } from "lucide-react";
 import {
   Card,
@@ -50,6 +55,8 @@ import {
 
 export function DashboardView() {
   const campaignId = useApp((s) => s.currentCampaignId);
+  const isOwner = useCurrentRole() === "owner";
+  const [importOpen, setImportOpen] = useState(false);
   const { data, isLoading, isError, refetch } = useQuery<DashboardMetrics>({
     queryKey: ["dashboard", campaignId],
     queryFn: async () => {
@@ -79,144 +86,7 @@ export function DashboardView() {
   const daysToElection = Math.max(0, Math.ceil((new Date(data.campaign.electionDate).getTime() - Date.now()) / 86_400_000));
   const supportPct = data.totals.voters > 0 ? (data.totals.supporters / data.totals.voters) * 100 : 0;
 
-  return (
-    <div className="p-4 md:p-6 space-y-6">
-      {/* Campaign header */}
-      <Card className="overflow-hidden border-primary/20">
-        <div className="bg-gradient-to-br from-primary/8 via-emerald-500/4 to-transparent">
-          <CardContent className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <Badge variant="outline" className="text-[10px] uppercase tracking-wider border-primary/30 text-primary">
-                  {data.campaign.party ?? "Nonpartisan"}
-                </Badge>
-                <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
-                  {data.campaign.district}
-                </Badge>
-              </div>
-              <h2 className="text-xl md:text-2xl font-semibold tracking-tight">
-                {data.campaign.candidateName}
-              </h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {data.campaign.officeSought} · Election {formatDate(data.campaign.electionDate)}
-              </p>
-            </div>
-            <div className="flex items-center gap-5">
-              <div className="text-center">
-                <div className="text-3xl font-bold tabular-nums text-primary">{daysToElection}</div>
-                <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Days to election</div>
-              </div>
-              <div className="hidden sm:block w-px h-12 bg-border" />
-              <div className="hidden sm:block text-center">
-                <div className="text-2xl font-semibold tabular-nums">{data.totals.supporters}</div>
-                <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Supporters</div>
-              </div>
-            </div>
-          </CardContent>
-        </div>
-      </Card>
-
-      {/* KPI grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatCard
-          icon={Users}
-          label="Registered voters"
-          value={data.totals.voters.toLocaleString()}
-          sub={`${data.totals.votersContacted} contacted`}
-          accent="primary"
-        />
-        <StatCard
-          icon={HeartHandshake}
-          label="Volunteers"
-          value={data.totals.volunteers}
-          sub="Active this cycle"
-          accent="emerald"
-        />
-        <StatCard
-          icon={DollarSign}
-          label="Total raised"
-          value={formatCompactCurrency(data.totals.raisedCents)}
-          sub={`${data.totals.donors} donors · ${data.totals.donations} gifts`}
-          accent="amber"
-        />
-        <StatCard
-          icon={DoorOpen}
-          label="Doors knocked"
-          value={data.totals.canvassDoors}
-          sub="Across all precincts"
-          accent="violet"
-        />
-        <StatCard
-          icon={PhoneCall}
-          label="Calls made"
-          value={data.totals.callsMade}
-          sub="Phone bank outreach"
-          accent="cyan"
-        />
-        <StatCard
-          icon={ListTodo}
-          label="Open tasks"
-          value={data.totals.tasksOpen}
-          sub={`${data.totals.events} events scheduled`}
-          accent="rose"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Fundraising progress */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">Fundraising Progress</CardTitle>
-                <CardDescription className="text-xs">
-                  {formatCurrency(data.fundraising.raisedCents)} raised of {formatCurrency(data.fundraising.goalCents)} goal
-                </CardDescription>
-              </div>
-              <Badge variant="outline" className="font-mono">{data.fundraising.percent.toFixed(1)}%</Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <FundraisingBar
-              raised={data.fundraising.raisedCents}
-              goal={data.fundraising.goalCents}
-            />
-            <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {data.fundraising.byMethod.map((m) => (
-                <div key={m.method} className="rounded-lg border bg-card/60 p-3">
-                  <div className="text-[11px] text-muted-foreground uppercase tracking-wider">{m.method}</div>
-                  <div className="text-sm font-semibold tabular-nums mt-1">
-                    {formatCompactCurrency(m.totalCents)}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {/* Recent donations */}
-            <div className="mt-5">
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Recent donations</div>
-              <div className="space-y-1">
-                {data.fundraising.recent.map((d) => (
-                  <div key={d.id} className="flex items-center gap-3 py-1.5 px-2 rounded hover:bg-accent/30 -mx-2">
-                    <PersonAvatar first={d.donor?.firstName} last={d.donor?.lastName} size="sm" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm truncate">
-                        {d.donor ? `${d.donor.firstName} ${d.donor.lastName}` : "Unknown donor"}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {d.method}{d.inKindDescription ? ` · ${d.inKindDescription}` : ""} · {relativeTime(d.donationDate)}
-                      </div>
-                    </div>
-                    <div className="text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                      +{formatCurrency(d.amountCents)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Support breakdown */}
+  const supportCard = (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Support Breakdown</CardTitle>
@@ -272,7 +142,238 @@ export function DashboardView() {
             </div>
           </CardContent>
         </Card>
+  );
+  const eventsCard = (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Upcoming Events</CardTitle>
+            <CardDescription className="text-xs">Next on the schedule</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {data.upcomingEvents.length === 0 && (
+                <p className="text-sm text-muted-foreground">No upcoming events.</p>
+              )}
+              {data.upcomingEvents.map((e) => {
+                const d = new Date(e.startTime);
+                return (
+                  <div key={e.id} className="flex gap-3 group">
+                    <div className="flex flex-col items-center pt-0.5">
+                      <div className="text-[10px] uppercase font-medium text-primary">{d.toLocaleString("en-US", { month: "short" })}</div>
+                      <div className="text-lg font-bold leading-none tabular-nums">{d.getDate()}</div>
+                    </div>
+                    <div className="flex-1 min-w-0 pb-3 border-b last:border-b-0">
+                      <div className="text-sm font-medium truncate">{e.title}</div>
+                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
+                        <Clock className="size-3" />
+                        <span>{formatTime(e.startTime)}</span>
+                        {e.location && (
+                          <>
+                            <MapPin className="size-3 ml-1" />
+                            <span className="truncate">{e.location}</span>
+                          </>
+                        )}
+                      </div>
+                      {e.attendeeCount !== undefined && (
+                        <div className="text-[11px] text-muted-foreground mt-0.5">{e.attendeeCount} RSVPs</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+  );
+  const precinctCard = (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Precinct Performance</CardTitle>
+            <CardDescription className="text-xs">Support & contact rate</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {data.precincts.map((p) => {
+                const supportPct = p.total > 0 ? (p.supporters / p.total) * 100 : 0;
+                const contactPct = p.total > 0 ? (p.contacted / p.total) * 100 : 0;
+                return (
+                  <div key={p.name}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="font-medium">{p.name}</span>
+                      <span className="text-muted-foreground tabular-nums">{p.supporters}/{p.total}</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-full bg-primary" style={{ width: `${supportPct}%` }} />
+                      </div>
+                      <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-full bg-highlight" style={{ width: `${contactPct}%` }} />
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+                      <span>{supportPct.toFixed(0)}% support</span>
+                      <span>{contactPct.toFixed(0)}% contacted</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-3 text-[10px] text-muted-foreground mt-4 pt-3 border-t">
+              <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-primary" />Supporters</span>
+              <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-highlight" />Contacted</span>
+            </div>
+          </CardContent>
+        </Card>
+  );
+
+  return (
+    <div className="p-4 md:p-6 space-y-6">
+      {/* Campaign header */}
+      <Card className="overflow-hidden border-primary/20">
+        <div className="bg-gradient-to-br from-primary/8 via-emerald-500/4 to-transparent">
+          <CardContent className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <Badge variant="outline" className="text-[10px] uppercase tracking-wider border-primary/30 text-primary">
+                  {data.campaign.party ?? "Nonpartisan"}
+                </Badge>
+                <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                  {data.campaign.district}
+                </Badge>
+              </div>
+              <h2 className="text-xl md:text-2xl font-semibold tracking-tight">
+                {data.campaign.candidateName}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {data.campaign.officeSought} · Election {formatDate(data.campaign.electionDate, { timeZone: "UTC" })}
+              </p>
+            </div>
+            <div className="flex items-center gap-5">
+              <div className="text-center">
+                <div className="text-3xl font-bold tabular-nums text-primary">{daysToElection}</div>
+                <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Days to election</div>
+              </div>
+              <div className="hidden sm:block w-px h-12 bg-border" />
+              <div className="hidden sm:block text-center">
+                <div className="text-2xl font-semibold tabular-nums">{data.totals.supporters}</div>
+                <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Supporters</div>
+              </div>
+            </div>
+          </CardContent>
+        </div>
+      </Card>
+
+      <OnboardingChecklist totals={data.totals} isOwner={isOwner} onImport={() => setImportOpen(true)} />
+      {isOwner && <ImportVotersDialog open={importOpen} onOpenChange={setImportOpen} campaignId={campaignId} />}
+
+      {/* KPI grid */}
+      <div className={`grid grid-cols-2 md:grid-cols-3 ${data.fundraising ? "lg:grid-cols-6" : "lg:grid-cols-5"} gap-3`}>
+        <StatCard
+          icon={Users}
+          label="Registered voters"
+          value={data.totals.voters.toLocaleString()}
+          sub={`${data.totals.votersContacted} contacted`}
+          accent="primary"
+        />
+        <StatCard
+          icon={HeartHandshake}
+          label="Volunteers"
+          value={data.totals.volunteers}
+          sub="Active this cycle"
+          accent="emerald"
+        />
+        {data.fundraising && (
+          <StatCard
+            icon={DollarSign}
+            label="Total raised"
+            value={formatCompactCurrency(data.fundraising.raisedCents)}
+            sub={`${data.fundraising.donors} donors · ${data.fundraising.donations} gifts`}
+            accent="amber"
+          />
+        )}
+        <StatCard
+          icon={DoorOpen}
+          label="Doors knocked"
+          value={data.totals.canvassDoors}
+          sub="Across all precincts"
+          accent="violet"
+        />
+        <StatCard
+          icon={PhoneCall}
+          label="Calls made"
+          value={data.totals.callsMade}
+          sub="Phone bank outreach"
+          accent="cyan"
+        />
+        <StatCard
+          icon={ListTodo}
+          label="Open tasks"
+          value={data.totals.tasksOpen}
+          sub={`${data.totals.events} events scheduled`}
+          accent="rose"
+          className={data.fundraising ? undefined : "col-span-2 lg:col-span-1"}
+        />
       </div>
+
+      {/* Fundraising is owner-only; the API returns null for members. */}
+      {data.fundraising && (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Fundraising progress */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Fundraising Progress</CardTitle>
+                <CardDescription className="text-xs">
+                  {formatCurrency(data.fundraising.raisedCents)} raised of {formatCurrency(data.fundraising.goalCents)} goal
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="font-mono">{data.fundraising.percent.toFixed(1)}%</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <FundraisingBar
+              raised={data.fundraising.raisedCents}
+              goal={data.fundraising.goalCents}
+            />
+            <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {data.fundraising.byMethod.map((m) => (
+                <div key={m.method} className="rounded-lg border bg-card/60 p-3">
+                  <div className="text-[11px] text-muted-foreground uppercase tracking-wider">{m.method}</div>
+                  <div className="text-sm font-semibold tabular-nums mt-1">
+                    {formatCompactCurrency(m.totalCents)}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Recent donations */}
+            <div className="mt-5">
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Recent donations</div>
+              <div className="space-y-1">
+                {data.fundraising.recent.map((d) => (
+                  <div key={d.id} className="flex items-center gap-3 py-1.5 px-2 rounded hover:bg-accent/30 -mx-2">
+                    <PersonAvatar first={d.donor?.firstName} last={d.donor?.lastName} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm truncate">
+                        {d.donor ? `${d.donor.firstName} ${d.donor.lastName}` : "Unknown donor"}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {d.method}{d.inKindDescription ? ` · ${d.inKindDescription}` : ""} · {relativeTime(d.donationDate)}
+                      </div>
+                    </div>
+                    <div className="text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                      +{formatCurrency(d.amountCents)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {supportCard}
+      </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Outreach trends */}
@@ -315,47 +416,7 @@ export function DashboardView() {
           </CardContent>
         </Card>
 
-        {/* Upcoming events */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Upcoming Events</CardTitle>
-            <CardDescription className="text-xs">Next on the schedule</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {data.upcomingEvents.length === 0 && (
-                <p className="text-sm text-muted-foreground">No upcoming events.</p>
-              )}
-              {data.upcomingEvents.map((e) => {
-                const d = new Date(e.startTime);
-                return (
-                  <div key={e.id} className="flex gap-3 group">
-                    <div className="flex flex-col items-center pt-0.5">
-                      <div className="text-[10px] uppercase font-medium text-primary">{d.toLocaleString("en-US", { month: "short" })}</div>
-                      <div className="text-lg font-bold leading-none tabular-nums">{d.getDate()}</div>
-                    </div>
-                    <div className="flex-1 min-w-0 pb-3 border-b last:border-b-0">
-                      <div className="text-sm font-medium truncate">{e.title}</div>
-                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                        <Clock className="size-3" />
-                        <span>{formatTime(e.startTime)}</span>
-                        {e.location && (
-                          <>
-                            <MapPin className="size-3 ml-1" />
-                            <span className="truncate">{e.location}</span>
-                          </>
-                        )}
-                      </div>
-                      {e.attendeeCount !== undefined && (
-                        <div className="text-[11px] text-muted-foreground mt-0.5">{e.attendeeCount} RSVPs</div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+        {data.fundraising ? eventsCard : supportCard}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -363,7 +424,9 @@ export function DashboardView() {
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Recent Activity</CardTitle>
-            <CardDescription className="text-xs">Latest donations, contacts, and tasks</CardDescription>
+            <CardDescription className="text-xs">
+              {data.fundraising ? "Latest donations, contacts, and tasks" : "Latest contacts, events, and tasks"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
@@ -396,47 +459,94 @@ export function DashboardView() {
           </CardContent>
         </Card>
 
-        {/* Precinct performance */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Precinct Performance</CardTitle>
-            <CardDescription className="text-xs">Support & contact rate</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {data.precincts.map((p) => {
-                const supportPct = p.total > 0 ? (p.supporters / p.total) * 100 : 0;
-                const contactPct = p.total > 0 ? (p.contacted / p.total) * 100 : 0;
-                return (
-                  <div key={p.name}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="font-medium">{p.name}</span>
-                      <span className="text-muted-foreground tabular-nums">{p.supporters}/{p.total}</span>
-                    </div>
-                    <div className="flex gap-1">
-                      <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: `${supportPct}%` }} />
-                      </div>
-                      <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-accent" style={{ width: `${contactPct}%` }} />
-                      </div>
-                    </div>
-                    <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
-                      <span>{supportPct.toFixed(0)}% support</span>
-                      <span>{contactPct.toFixed(0)}% contacted</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex gap-3 text-[10px] text-muted-foreground mt-4 pt-3 border-t">
-              <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-primary" />Supporters</span>
-              <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-accent" />Contacted</span>
-            </div>
-          </CardContent>
-        </Card>
+        {data.fundraising ? precinctCard : (
+          <div className="space-y-6">
+            {eventsCard}
+            {precinctCard}
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function OnboardingChecklist({ totals, isOwner, onImport }: {
+  totals: DashboardMetrics["totals"];
+  isOwner: boolean;
+  onImport: () => void;
+}) {
+  const setActive = useApp((s) => s.set);
+  const steps: { title: string; done: boolean; detail: React.ReactNode; action?: React.ReactNode }[] = [
+    {
+      title: "Import your voter list",
+      done: totals.voters > 0,
+      detail: isOwner
+        ? "Upload a CSV from your county or a spreadsheet."
+        : "Ask your campaign owner to import the voter list. You can add voters one at a time on the Voters page.",
+      action: isOwner ? (
+        <Button type="button" size="sm" onClick={onImport}>
+          <Upload className="size-3.5 mr-1" aria-hidden /> Import voter list
+        </Button>
+      ) : (
+        <Button type="button" size="sm" variant="outline" onClick={() => setActive("voters")}>Go to Voters</Button>
+      ),
+    },
+    {
+      title: "Add your first volunteer",
+      done: totals.volunteers > 0,
+      detail: "Keep track of who is helping, then assign tasks and outreach.",
+      action: (
+        <Button type="button" size="sm" variant="outline" onClick={() => setActive("volunteers")}>Go to Volunteers</Button>
+      ),
+    },
+  ];
+  if (isOwner) {
+    steps.push({
+      title: "Invite your team",
+      done: totals.teamMembers > 1 || totals.invitesSent > 0,
+      detail: (
+        <>
+          Use the invite button (<UserPlus className="inline size-3 align-[-2px]" aria-label="person with a plus sign" />) at the top of the page to give teammates their own login.
+        </>
+      ),
+    });
+  }
+  const doneCount = steps.filter((s) => s.done).length;
+  // Stays until voters and volunteers exist, so importing voters doesn't hide
+  // the rest. Inviting alone never keeps it up: solo campaigns are valid, and
+  // the invite button is always in the top bar.
+  if (steps[0].done && steps[1].done) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Get your campaign ready</CardTitle>
+        <CardDescription className="text-xs">{doneCount} of {steps.length} done</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ol className="divide-y border-t">
+          {steps.map((s) => (
+            <li key={s.title} className="flex flex-col sm:flex-row sm:items-center gap-3 py-3">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                {s.done ? (
+                  <CheckCircle2 className="size-5 text-primary shrink-0" aria-hidden />
+                ) : (
+                  <Circle className="size-5 text-muted-foreground shrink-0" aria-hidden />
+                )}
+                <div className="min-w-0">
+                  <div className={s.done ? "text-sm font-medium text-muted-foreground" : "text-sm font-medium"}>
+                    {s.title}
+                    {s.done && <span className="sr-only"> (done)</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{s.detail}</p>
+                </div>
+              </div>
+              {!s.done && s.action && <div className="sm:shrink-0 pl-8 sm:pl-0">{s.action}</div>}
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
   );
 }
 

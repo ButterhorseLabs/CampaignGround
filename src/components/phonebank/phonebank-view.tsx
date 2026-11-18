@@ -36,6 +36,7 @@ import { Label } from "@/components/ui/label";
 import type { CallLog, Voter, Volunteer } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { useClaims } from "@/lib/claims";
+import { ActingAsPicker } from "@/components/common/acting-as-picker";
 import { useVoters } from "@/lib/voters";
 import { useVolunteers } from "@/lib/volunteers";
 import { LogCallDialog } from "@/components/phonebank/log-call-dialog";
@@ -138,19 +139,7 @@ export function PhoneBankView() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       {/* Who's calling */}
-      <div className="flex items-center gap-2">
-        <Label className="text-xs whitespace-nowrap">Calling as</Label>
-        <Select value={activeVolunteerId} onValueChange={setActiveVolunteerId}>
-          <SelectTrigger className="h-8 w-[220px] text-xs">
-            <SelectValue placeholder="Select yourself…" />
-          </SelectTrigger>
-          <SelectContent>
-            {volunteers.map((v) => (
-              <SelectItem key={v.id} value={v.id}>{v.firstName} {v.lastName}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <ActingAsPicker label="Calling as" campaignId={campaignId} value={activeVolunteerId} onChange={setActiveVolunteerId} />
 
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -174,7 +163,7 @@ export function PhoneBankView() {
             {!activeVolunteerId ? (
               <div className="py-12 text-center text-sm text-muted-foreground">
                 <PhoneCall className="size-8 mx-auto mb-2 opacity-50" />
-                Select who's calling to start the queue
+                Choose who's calling to start the queue
               </div>
             ) : currentVoter ? (
               <div>

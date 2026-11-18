@@ -15,10 +15,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const title = "CampaignGround — Local Election CRM";
+const description =
+  "Free, open-source campaign software for city council, school board, and mayor races: voters, volunteers, donors, canvassing, and phone banking in one place.";
+
 export const metadata: Metadata = {
-  title: "CampaignGround — Local Election CRM",
-  description:
-    "A voter, volunteer, donor and outreach CRM built specifically for campaigns running for local office — city council, school board, mayor.",
+  metadataBase: new URL(process.env.NEXTAUTH_URL ?? "http://localhost:3000"),
+  title,
+  description,
   keywords: [
     "campaign CRM",
     "local elections",
@@ -28,6 +32,17 @@ export const metadata: Metadata = {
     "grassroots",
   ],
   authors: [{ name: "CampaignGround" }],
+  openGraph: {
+    type: "website",
+    siteName: "CampaignGround",
+    title,
+    description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+  },
 };
 
 export default function RootLayout({

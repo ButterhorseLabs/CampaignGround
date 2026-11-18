@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface Claim {
@@ -8,21 +9,27 @@ export interface Claim {
   claimedAt: string;
 }
 
+// Renewal must comfortably beat the server's 5 minute stale cutoff.
+const HEARTBEAT_MS = 60_000;
+
 /**
  * Shared claim/release mechanics for the "who's working this contact right
- * now" pattern used by canvassing and phone banking. Owns the claims query
- * and the claimedByOthers Map; callers own their own trigger logic (when to
- * claim/release).
+ * now" pattern used by canvassing and phone banking. Owns the claims query,
+ * the claimedByOthers Map, and the lifetime of the one claim this tab holds:
+ * it is renewed every minute while held and released on release(), on
+ * unmount, and when the page is hidden/closed. Callers own when to claim and
+ * release.
  */
 export function useClaims(channel: string, campaignId: string | null, activeVolunteerId: string) {
   const qc = useQueryClient();
+  const [held, setHeld] = useState<{ voterId: string; volunteerId: string } | null>(null);
 
   const { data } = useQuery({
     queryKey: ["claims", channel, campaignId],
     queryFn: async (): Promise<{ items: Claim[] }> =>
       (await fetch(`/api/claims?channel=${channel}&campaignId=${campaignId}`)).json(),
     enabled: !!campaignId,
-    refetchInterval: 8_000,
+    refetchInterval: 5_000,
   });
   const claims = data?.items ?? [];
 
@@ -42,20 +49,42 @@ export function useClaims(channel: string, campaignId: string | null, activeVolu
     onSettled: () => qc.invalidateQueries({ queryKey: ["claims", channel] }),
   });
 
-  const releaseMutation = useMutation({
-    mutationFn: async ({ voterId, volunteerId }: { voterId: string; volunteerId: string }) =>
+  useEffect(() => {
+    if (!held) return;
+    const send = (method: "POST" | "DELETE") =>
       fetch("/api/claims", {
-        method: "DELETE",
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ voterId, channel, volunteerId }),
-      }),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["claims", channel] }),
-  });
+        body: JSON.stringify({ ...held, channel }),
+        // keepalive lets the release survive the page being closed.
+        keepalive: true,
+      });
+    const timer = setInterval(() => send("POST"), HEARTBEAT_MS);
+    const onPageHide = () => send("DELETE");
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("pagehide", onPageHide);
+      send("DELETE").finally(() => qc.invalidateQueries({ queryKey: ["claims", channel] }));
+    };
+  }, [held, channel, qc]);
 
   return {
     claims,
     claimedByOthers,
-    claim: (voterId: string, volunteerId: string) => claimMutation.mutateAsync({ voterId, volunteerId }),
-    release: (voterId: string, volunteerId: string) => releaseMutation.mutateAsync({ voterId, volunteerId }),
+    claim: async (voterId: string, volunteerId: string) => {
+      const r = await claimMutation.mutateAsync({ voterId, volunteerId });
+      if (r.ok) {
+        // Keep the same object when re-claiming what we already hold so the
+        // heartbeat effect doesn't release and lose it.
+        setHeld((prev) =>
+          prev?.voterId === voterId && prev.volunteerId === volunteerId ? prev : { voterId, volunteerId }
+        );
+      }
+      return r;
+    },
+    // Releasing happens in the heartbeat effect's cleanup.
+    release: (voterId: string, volunteerId: string) =>
+      setHeld((prev) => (prev?.voterId === voterId && prev.volunteerId === volunteerId ? null : prev)),
   };
 }

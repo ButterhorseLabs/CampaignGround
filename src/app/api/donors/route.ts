@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { requireCampaignAccess } from "@/lib/api-auth";
+import { parseBody } from "@/lib/api-validate";
+import { donorCreateSchema } from "@/lib/validation/donor";
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -65,4 +67,33 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json({ items });
+}
+
+export async function POST(req: NextRequest) {
+  const parsed = await parseBody(req, donorCreateSchema);
+  if ("error" in parsed) return parsed.error;
+  const { campaignId, ...f } = parsed.data;
+  const access = await requireCampaignAccess(campaignId, { role: "owner" });
+  if ("error" in access) return access.error;
+
+  const donor = await db.donor.create({
+    data: {
+      firstName: f.firstName,
+      lastName: f.lastName,
+      email: f.email || null,
+      phone: f.phone || null,
+      address: f.address || null,
+      city: f.city || null,
+      state: f.state || null,
+      zip: f.zip || null,
+      employer: f.employer || null,
+      occupation: f.occupation || null,
+      type: f.type ?? "individual",
+      capacity: f.capacity ?? "unknown",
+      isRecurring: f.isRecurring ?? false,
+      notes: f.notes || null,
+      campaignId: access.campaignId,
+    },
+  });
+  return NextResponse.json(donor);
 }

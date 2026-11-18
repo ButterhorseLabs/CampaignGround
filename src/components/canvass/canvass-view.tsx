@@ -34,6 +34,7 @@ import { Label } from "@/components/ui/label";
 import type { CanvassLog, Voter, Volunteer } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { useClaims } from "@/lib/claims";
+import { ActingAsPicker } from "@/components/common/acting-as-picker";
 import { useVoters } from "@/lib/voters";
 import { useVolunteers } from "@/lib/volunteers";
 import { LogCanvassDialog } from "@/components/canvass/log-canvass-dialog";
@@ -130,19 +131,7 @@ export function CanvassView() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       {/* Who's canvassing */}
-      <div className="flex items-center gap-2">
-        <Label className="text-xs whitespace-nowrap">Canvassing as</Label>
-        <Select value={activeVolunteerId} onValueChange={setActiveVolunteerId}>
-          <SelectTrigger className="h-8 w-[220px] text-xs">
-            <SelectValue placeholder="Select yourself…" />
-          </SelectTrigger>
-          <SelectContent>
-            {volunteers.map((v) => (
-              <SelectItem key={v.id} value={v.id}>{v.firstName} {v.lastName}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <ActingAsPicker label="Canvassing as" campaignId={campaignId} value={activeVolunteerId} onChange={setActiveVolunteerId} />
 
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

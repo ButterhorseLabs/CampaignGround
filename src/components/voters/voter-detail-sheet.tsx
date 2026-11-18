@@ -25,7 +25,7 @@ import { Switch } from "@/components/ui/switch";
 interface VoterRow extends Voter {
   precinct?: { name: string; code: string } | null;
   household?: { address: string } | null;
-  _count?: { callLogs: number; canvassLogs: number; donations: number };
+  _count?: { callLogs: number; canvassLogs: number; donations?: number };
 }
 
 export function VoterDetailSheet({

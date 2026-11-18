@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AuthShell } from "@/components/auth/auth-shell";
 
 export default function LoginPage() {
   return (
@@ -28,7 +29,9 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
-  const [email, setEmail] = useState("");
+  const created = searchParams.get("created") === "1";
+  const reset = searchParams.get("reset") === "1";
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -46,7 +49,7 @@ function LoginForm() {
 
     setLoading(false);
     if (result?.error) {
-      setError("Invalid email or password");
+      setError("Email or password is incorrect.");
       return;
     }
     router.push(next && next.startsWith("/") ? next : "/dashboard");
@@ -54,14 +57,21 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <AuthShell>
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>CampaignGround</CardTitle>
-          <CardDescription>Sign in to manage your campaign.</CardDescription>
+          <CardTitle>Log in</CardTitle>
+          <CardDescription>Welcome back. Log in to manage your campaign.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {(created || reset) && (
+              <p role="status" className="rounded-md border bg-muted/50 px-3 py-2 text-sm">
+                {created
+                  ? "Your account was created. Log in to continue."
+                  : "Password updated. Log in with your new password."}
+              </p>
+            )}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -74,7 +84,12 @@ function LoginForm() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-baseline justify-between gap-2">
+                <Label htmlFor="password">Password</Label>
+                <Link href="/forgot-password" className="text-xs text-primary underline underline-offset-2">
+                  Forgot your password?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -84,9 +99,16 @@ function LoginForm() {
                 required
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && (
+              <p role="alert" className="text-sm text-destructive">
+                {error}{" "}
+                <Link href="/forgot-password" className="underline underline-offset-2">
+                  Reset your password
+                </Link>
+              </p>
+            )}
             <Button type="submit" disabled={loading}>
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? "Logging in…" : "Log in"}
             </Button>
           </form>
         </CardContent>
@@ -94,11 +116,11 @@ function LoginForm() {
           <p className="text-sm text-muted-foreground">
             New here?{" "}
             <Link href="/signup" className="text-primary underline underline-offset-2">
-              Start a campaign
+              Start your campaign
             </Link>
           </p>
         </CardFooter>
       </Card>
-    </div>
+    </AuthShell>
   );
 }

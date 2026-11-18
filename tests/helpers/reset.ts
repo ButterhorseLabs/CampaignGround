@@ -21,6 +21,7 @@ const TABLES = [
   "CanvassLog",
   "CallLog",
   "ContactClaim",
+  "PasswordResetToken",
 ];
 
 export async function resetTestDatabase(testUrl: string): Promise<void> {

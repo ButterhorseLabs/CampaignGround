@@ -1,0 +1,334 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-18T03:26:22.842897+00:00",
+  "title": "Design System: CampaignGround",
+  "extensions": {
+    "colorMeta": {
+      "civic-emerald": {
+        "role": "primary",
+        "displayName": "Civic Emerald",
+        "canonical": "oklch(0.42 0.09 155)",
+        "tonalRamp": [
+          "oklch(0.15 0.041 155)",
+          "oklch(0.26 0.054 155)",
+          "oklch(0.37 0.068 155)",
+          "oklch(0.48 0.081 155)",
+          "oklch(0.59 0.085 155)",
+          "oklch(0.70 0.072 155)",
+          "oklch(0.82 0.057 155)",
+          "oklch(0.95 0.041 155)"
+        ]
+      },
+      "ballot-amber": {
+        "role": "secondary",
+        "displayName": "Ballot Amber",
+        "canonical": "oklch(0.72 0.13 75)",
+        "tonalRamp": [
+          "oklch(0.15 0.059 75)",
+          "oklch(0.26 0.079 75)",
+          "oklch(0.37 0.098 75)",
+          "oklch(0.48 0.118 75)",
+          "oklch(0.59 0.123 75)",
+          "oklch(0.70 0.103 75)",
+          "oklch(0.82 0.082 75)",
+          "oklch(0.95 0.059 75)"
+        ]
+      },
+      "alert-brick": {
+        "role": "tertiary",
+        "displayName": "Alert Brick",
+        "canonical": "oklch(0.55 0.22 28)",
+        "tonalRamp": [
+          "oklch(0.15 0.100 28)",
+          "oklch(0.26 0.133 28)",
+          "oklch(0.37 0.166 28)",
+          "oklch(0.48 0.199 28)",
+          "oklch(0.59 0.208 28)",
+          "oklch(0.70 0.175 28)",
+          "oklch(0.82 0.139 28)",
+          "oklch(0.95 0.100 28)"
+        ]
+      },
+      "warm-parchment": {
+        "role": "neutral",
+        "displayName": "Warm Parchment",
+        "canonical": "oklch(0.985 0.008 120)",
+        "tonalRamp": [
+          "oklch(0.15 0.004 120)",
+          "oklch(0.26 0.005 120)",
+          "oklch(0.37 0.006 120)",
+          "oklch(0.48 0.007 120)",
+          "oklch(0.59 0.008 120)",
+          "oklch(0.70 0.006 120)",
+          "oklch(0.82 0.005 120)",
+          "oklch(0.95 0.004 120)"
+        ]
+      },
+      "commons-ink": {
+        "role": "neutral",
+        "displayName": "Commons Ink",
+        "canonical": "oklch(0.18 0.02 150)",
+        "tonalRamp": [
+          "oklch(0.15 0.009 150)",
+          "oklch(0.26 0.012 150)",
+          "oklch(0.37 0.015 150)",
+          "oklch(0.48 0.018 150)",
+          "oklch(0.59 0.019 150)",
+          "oklch(0.70 0.016 150)",
+          "oklch(0.82 0.013 150)",
+          "oklch(0.95 0.009 150)"
+        ]
+      },
+      "slate-sage": {
+        "role": "neutral",
+        "displayName": "Slate Sage",
+        "canonical": "oklch(0.48 0.02 150)",
+        "tonalRamp": [
+          "oklch(0.15 0.009 150)",
+          "oklch(0.26 0.012 150)",
+          "oklch(0.37 0.015 150)",
+          "oklch(0.48 0.018 150)",
+          "oklch(0.59 0.019 150)",
+          "oklch(0.70 0.016 150)",
+          "oklch(0.82 0.013 150)",
+          "oklch(0.95 0.009 150)"
+        ]
+      },
+      "sage-wash": {
+        "role": "neutral",
+        "displayName": "Sage Wash",
+        "canonical": "oklch(0.96 0.012 130)",
+        "tonalRamp": [
+          "oklch(0.15 0.005 130)",
+          "oklch(0.26 0.007 130)",
+          "oklch(0.37 0.009 130)",
+          "oklch(0.48 0.011 130)",
+          "oklch(0.59 0.011 130)",
+          "oklch(0.70 0.010 130)",
+          "oklch(0.82 0.008 130)",
+          "oklch(0.95 0.005 130)"
+        ]
+      },
+      "meadow-line": {
+        "role": "neutral",
+        "displayName": "Meadow Line",
+        "canonical": "oklch(0.9 0.012 130)",
+        "tonalRamp": [
+          "oklch(0.15 0.005 130)",
+          "oklch(0.26 0.007 130)",
+          "oklch(0.37 0.009 130)",
+          "oklch(0.48 0.011 130)",
+          "oklch(0.59 0.011 130)",
+          "oklch(0.70 0.010 130)",
+          "oklch(0.82 0.008 130)",
+          "oklch(0.95 0.005 130)"
+        ]
+      },
+      "night-commons": {
+        "role": "neutral",
+        "displayName": "Night Commons",
+        "canonical": "oklch(0.16 0.015 150)",
+        "tonalRamp": [
+          "oklch(0.15 0.007 150)",
+          "oklch(0.26 0.009 150)",
+          "oklch(0.37 0.011 150)",
+          "oklch(0.48 0.014 150)",
+          "oklch(0.59 0.014 150)",
+          "oklch(0.70 0.012 150)",
+          "oklch(0.82 0.009 150)",
+          "oklch(0.95 0.007 150)"
+        ]
+      },
+      "hover-sage": {
+        "role": "neutral",
+        "displayName": "Hover Sage",
+        "canonical": "oklch(0.94 0.018 130)",
+        "tonalRamp": [
+          "oklch(0.15 0.008 130)",
+          "oklch(0.26 0.011 130)",
+          "oklch(0.37 0.014 130)",
+          "oklch(0.48 0.016 130)",
+          "oklch(0.59 0.017 130)",
+          "oklch(0.70 0.014 130)",
+          "oklch(0.82 0.011 130)",
+          "oklch(0.95 0.008 130)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Landing hero headline only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Landing section headings and CTA band."
+      },
+      "stat": {
+        "displayName": "Stat",
+        "purpose": "Dashboard metrics, tabular numerals."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card and page titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default UI text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase tracked metadata and group labels."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Version tags and small codes."
+      },
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "Brand name beside the mark. Logo use only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "hairline-lift",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "Buttons and inputs at rest."
+      },
+      {
+        "name": "card-lift",
+        "value": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+        "purpose": "Cards, active nav item, brand-mark tile."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-transition",
+        "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Tailwind default color/shadow transitions on controls."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action per view.",
+      "html": "<button class=\"ds-btn-primary\">Start your campaign</button>",
+      "css": ".ds-btn-primary { font-family: Geist, var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif; font-feature-settings: 'ss01','cv11'; display:inline-flex; align-items:center; gap:8px; height:36px; padding:8px 16px; border:1px solid transparent; border-radius:8px; background:oklch(0.42 0.09 155); color:oklch(0.99 0.005 120); font-size:14px; font-weight:500; box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05); cursor:pointer; transition:all .15s; } .ds-btn-primary:hover { background:oklch(0.42 0.09 155 / 0.9); } .ds-btn-primary:focus-visible { outline:none; border-color:oklch(0.5 0.09 155); box-shadow:0 0 0 3px oklch(0.5 0.09 155 / 0.5); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary actions; quiet sage fill on hover.",
+      "html": "<button class=\"ds-btn-outline\">Log in</button>",
+      "css": ".ds-btn-outline { font-family: Geist, var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif; font-feature-settings: 'ss01','cv11'; display:inline-flex; align-items:center; height:36px; padding:8px 16px; border:1px solid oklch(0.9 0.012 130); border-radius:8px; background:oklch(0.985 0.008 120); color:oklch(0.18 0.02 150); font-size:14px; font-weight:500; box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05); cursor:pointer; transition:all .15s; } .ds-btn-outline:hover { background:oklch(0.94 0.018 130); color:oklch(0.18 0.02 150); } .ds-btn-outline:focus-visible { outline:none; border-color:oklch(0.5 0.09 155); box-shadow:0 0 0 3px oklch(0.5 0.09 155 / 0.5); }"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Irreversible actions only.",
+      "html": "<button class=\"ds-btn-danger\">Delete voter</button>",
+      "css": ".ds-btn-danger { font-family: Geist, var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif; font-feature-settings: 'ss01','cv11'; height:36px; padding:8px 16px; border:none; border-radius:8px; background:oklch(0.55 0.22 28); color:#fff; font-size:14px; font-weight:500; box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05); cursor:pointer; } .ds-btn-danger:hover { background:oklch(0.55 0.22 28 / 0.9); } .ds-btn-danger:focus-visible { outline:none; box-shadow:0 0 0 3px oklch(0.55 0.22 28 / 0.2); }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Default text field; emerald ring on focus.",
+      "html": "<input class=\"ds-input\" placeholder=\"Search voters, donors, addresses…\">",
+      "css": ".ds-input { font-family: Geist, var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif; font-feature-settings: 'ss01','cv11'; width:320px; height:36px; padding:4px 12px; border:1px solid oklch(0.92 0.012 130); border-radius:8px; background:transparent; color:oklch(0.18 0.02 150); font-size:14px; box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05); outline:none; transition:border-color .15s, box-shadow .15s; } .ds-input::placeholder { color:oklch(0.48 0.02 150); } .ds-input:focus-visible { border-color:oklch(0.5 0.09 155); box-shadow:0 0 0 3px oklch(0.5 0.09 155 / 0.5); }"
+    },
+    {
+      "name": "Sidebar Nav",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Grouped sidebar with emerald active item.",
+      "html": "<nav class=\"ds-nav\"><div class=\"ds-nav-label\">People</div><a class=\"ds-nav-item ds-active\" href=\"#\">Dashboard <span class=\"ds-nav-count\">Live</span></a><a class=\"ds-nav-item\" href=\"#\">Voters</a><a class=\"ds-nav-item\" href=\"#\">Volunteers</a></nav>",
+      "css": ".ds-nav { font-family: Geist, var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif; font-feature-settings: 'ss01','cv11'; width:232px; padding:12px; background:oklch(0.97 0.01 130); border-right:1px solid oklch(0.9 0.012 130); } .ds-nav-label { padding:0 8px; margin-bottom:6px; font-size:10.5px; font-weight:500; text-transform:uppercase; letter-spacing:0.05em; color:oklch(0.48 0.02 150 / 0.8); } .ds-nav-item { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-radius:8px; font-size:14px; color:oklch(0.2 0.025 150 / 0.8); text-decoration:none; transition:background .15s; } .ds-nav-item:hover { background:oklch(0.93 0.018 130); color:oklch(0.22 0.04 155); } .ds-nav-item.ds-active { background:oklch(0.42 0.09 155); color:oklch(0.99 0.005 120); font-weight:500; box-shadow:0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); } .ds-nav-item:focus-visible { outline:none; box-shadow:0 0 0 3px oklch(0.5 0.09 155 / 0.5); } .ds-nav-count { font-size:10px; padding:2px 6px; border-radius:9999px; border:1px solid oklch(0.99 0.005 120 / 0.3); }"
+    },
+    {
+      "name": "Support Chip",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Tinted status pill with dot.",
+      "html": "<span class=\"ds-chip\"><span class=\"ds-chip-dot\"></span>Strong support</span>",
+      "css": ".ds-chip { font-family: Geist, var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif; font-feature-settings: 'ss01','cv11'; display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border:1px solid #a7f3d0; border-radius:8px; background:#d1fae5; color:#065f46; font-size:12px; font-weight:500; } .ds-chip-dot { width:6px; height:6px; border-radius:9999px; background:#10b981; }"
+    },
+    {
+      "name": "Stat Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Dashboard metric with tinted icon tile.",
+      "html": "<div class=\"ds-stat\"><div class=\"ds-stat-icon\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/></svg></div><div class=\"ds-stat-num\">280</div><div class=\"ds-stat-cap\">Registered voters</div><div class=\"ds-stat-sub\">52 contacted</div></div>",
+      "css": ".ds-stat { font-family: Geist, var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif; font-feature-settings: 'ss01','cv11'; width:160px; padding:16px; border:1px solid oklch(0.9 0.012 130); border-radius:14px; background:oklch(1 0 0); color:oklch(0.18 0.02 150); box-shadow:0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); } .ds-stat-icon { width:36px; height:36px; display:grid; place-items:center; border-radius:10px; background:oklch(0.96 0.012 130); color:oklch(0.42 0.09 155); margin-bottom:12px; } .ds-stat-num { font-size:24px; font-weight:600; letter-spacing:-0.025em; font-variant-numeric:tabular-nums; } .ds-stat-cap { font-size:12px; color:oklch(0.48 0.02 150); margin-top:2px; } .ds-stat-sub { font-size:11px; color:oklch(0.48 0.02 150 / 0.8); margin-top:4px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Civic Commons",
+    "overview": "CampaignGround should feel like a well-kept public space: open, welcoming, and owned by the community that uses it. A first-time candidate should walk in and immediately know where things are. The world is warm paper and civic green, never glossy, never partisan, never the slick dashboard of a well-funded operation. Trust comes from calm order, not from spectacle.\n\nSurfaces are quiet and dependable. The interface leans flat: hairline sage borders separate regions, and shadows appear only as a soft lift under cards and pressed controls. Color is reserved for meaning: emerald marks the current place and the primary action, amber marks a highlight in data, and the status ramp carries voter support and task state. Hover and focus answer in a quiet sage tint. Everything else is ink on parchment.\n\nDensity is moderate. Operate screens (dashboard, voters, canvassing) carry real data in compact type with tabular numbers; the public landing page opens up with larger type, centered composition, and the civic grid texture behind it.",
+    "keyCharacteristics": [
+      "Warm parchment ground with green-tinted neutrals; pure white only on cards and popovers.",
+      "One civic emerald for identity, active navigation, and primary actions.",
+      "Ballot amber as the sole secondary hue, for highlights in data, never for hover or large fills.",
+      "Hairline borders and soft, small shadows; no heavy elevation.",
+      "Geist throughout, with small uppercase labels for section and metadata text.",
+      "Full light and dark themes driven by the same token names."
+    ],
+    "rules": [
+      {
+        "name": "The Earned Color Rule",
+        "body": "Emerald and amber only mean something: the current location, the primary action, a highlight in data. Hover is never a hue; it is Hover Sage. If a fill is not one of those, it is a neutral.",
+        "section": "colors"
+      },
+      {
+        "name": "The Nonpartisan Palette Rule",
+        "body": "Never pair red and blue as a brand or emphasis pairing, and never use a party color as identity. Red exists only as Alert Brick and in the status ramp.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Figures Rule",
+        "body": "Any number a volunteer might compare (counts, money, percentages, days to election) uses tabular numerals.",
+        "section": "typography"
+      },
+      {
+        "name": "The Quiet Surface Rule",
+        "body": "Nothing goes above card lift at rest. Dialogs and popovers may float higher; page content never does.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** use the semantic tokens (primary, accent, muted, border, card) so light and dark themes stay in sync.",
+      "**Do** keep Civic Emerald for the active location and the one primary action per view.",
+      "**Do** use tabular numerals for every comparable figure.",
+      "**Do** use the civic grid texture only behind auth screens, empty states, and the landing hero.",
+      "**Do** keep status colors on the documented tinted-pill recipe, with both light and dark variants."
+    ],
+    "donts": [
+      "**Don't** use red and blue together as an emphasis pairing, or any party color as identity.",
+      "**Don't** add shadows heavier than card lift to page content.",
+      "**Don't** use pure white as a page background; pages sit on Warm Parchment.",
+      "**Don't** introduce a second typeface; hierarchy comes from Geist's weights, tracking, and case.",
+      "**Don't** fill large areas with Ballot Amber.",
+      "**Don't** fill a full-width band with the dark-theme emerald; in dark mode a call-to-action band becomes Night Card with an emerald button.",
+      "**Don't** put a kicker or badge above a heading; the heading carries the line."
+    ]
+  }
+}

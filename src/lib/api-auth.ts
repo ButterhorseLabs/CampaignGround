@@ -111,3 +111,21 @@ export async function assertBelongsToCampaign(
   const row = await delegate.findFirst({ where: { id, campaignId }, select: { id: true } });
   return row ? null : NextResponse.json({ error: `Invalid ${label}` }, { status: 400 });
 }
+
+// Who a request may log contacts or hold claims as. Owners may act as any
+// volunteer in the campaign (they run walk lists for the whole team); members
+// may only act as the roster entry linked to their own login.
+export async function assertCanActAsVolunteer(
+  access: { userId: string; campaignId: string; role: "owner" | "member" },
+  volunteerId: string
+): Promise<NextResponse | null> {
+  const volunteer = await db.volunteer.findFirst({
+    where: { id: volunteerId, campaignId: access.campaignId },
+    select: { userId: true },
+  });
+  if (!volunteer) return NextResponse.json({ error: "Invalid volunteer" }, { status: 400 });
+  if (access.role !== "owner" && volunteer.userId !== access.userId) {
+    return NextResponse.json({ error: "You can only canvass or call as yourself" }, { status: 403 });
+  }
+  return null;
+}

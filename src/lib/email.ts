@@ -72,3 +72,37 @@ export async function reactivateBounce(bounceId: number) {
   }
   return client.activateBounce(bounceId);
 }
+
+export async function sendPasswordResetEmail(opts: {
+  to: string;
+  token: string;
+}): Promise<{ messageId: string } | undefined> {
+  const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password/${opts.token}`;
+
+  if (!client) {
+    // Same dev fallback as sendInviteEmail: log the link loudly instead of failing.
+    const prefix = process.env.NODE_ENV === "production" ? "[email] ERROR" : "[email] dev";
+    console.warn(`${prefix}: POSTMARK_SERVER_TOKEN not set — password reset link for ${stripNewlines(opts.to)}: ${resetUrl}`);
+    return undefined;
+  }
+
+  const response = await client.sendEmail({
+    From: process.env.EMAIL_FROM ?? "CampaignGround <invites@yourdomain.com>",
+    To: opts.to,
+    Subject: "Reset your CampaignGround password",
+    HtmlBody: `
+      <p>Someone asked to reset the password for this CampaignGround account.</p>
+      <p><a href="${escapeHtml(resetUrl)}">Choose a new password</a></p>
+      <p>This link expires in 1 hour. If you didn't ask for this, you can ignore this email; your password stays the same.</p>
+    `,
+    TextBody: `Someone asked to reset the password for this CampaignGround account.\n\nChoose a new password: ${resetUrl}\n\nThis link expires in 1 hour. If you didn't ask for this, you can ignore this email; your password stays the same.`,
+    MessageStream: "outbound",
+  });
+
+  if (response.ErrorCode !== 0) {
+    console.error("sendPasswordResetEmail failed:", response.Message);
+    throw new Error("Failed to send password reset email");
+  }
+
+  return { messageId: response.MessageID };
+}

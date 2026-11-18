@@ -17,17 +17,14 @@ export async function GET(req: NextRequest) {
     votersCount,
     votersContactedRaw,
     supportersCount,
-    donorsCount,
-    donationsCount,
-    raisedAgg,
+    teamMembers,
+    invitesSent,
     volunteersCount,
     eventsCount,
     tasksOpen,
     canvassCount,
     callsCount,
-    recentDonations,
     supportBreakdownRaw,
-    donationsByMethodRaw,
     canvassByDayRaw,
     callsByDayRaw,
     upcomingEvents,
@@ -36,6 +33,7 @@ export async function GET(req: NextRequest) {
     recentEvents,
     recentTasks,
     precinctRows,
+    fundraising,
   ] = await Promise.all([
     db.voter.count({ where: { campaignId: campaign.id } }),
     db.voter.findMany({
@@ -48,29 +46,17 @@ export async function GET(req: NextRequest) {
     db.voter.count({
       where: { campaignId: campaign.id, supportLevel: { in: ["strong-support", "lean-support"] } },
     }),
-    db.donor.count({ where: { campaignId: campaign.id } }),
-    db.donation.count({ where: { campaignId: campaign.id } }),
-    db.donation.aggregate({ where: { campaignId: campaign.id }, _sum: { amountCents: true } }),
+    db.campaignMembership.count({ where: { campaignId: campaign.id } }),
+    db.invite.count({ where: { campaignId: campaign.id } }),
     db.volunteer.count({ where: { campaignId: campaign.id } }),
     db.event.count({ where: { campaignId: campaign.id } }),
     db.task.count({ where: { campaignId: campaign.id, status: { in: ["todo", "in-progress", "blocked"] } } }),
     db.canvassLog.count({ where: { campaignId: campaign.id } }),
     db.callLog.count({ where: { campaignId: campaign.id } }),
-    db.donation.findMany({
-      where: { campaignId: campaign.id },
-      include: { donor: true },
-      orderBy: { donationDate: "desc" },
-      take: 5,
-    }),
     db.voter.groupBy({
       by: ["supportLevel"],
       where: { campaignId: campaign.id },
       _count: { _all: true },
-    }),
-    db.donation.groupBy({
-      by: ["method"],
-      where: { campaignId: campaign.id },
-      _sum: { amountCents: true },
     }),
     db.canvassLog.findMany({
       where: { campaignId: campaign.id },
@@ -111,7 +97,7 @@ export async function GET(req: NextRequest) {
       include: { volunteer: { select: { firstName: true, lastName: true } } },
     }),
     db.precinct.findMany({
-      where: { households: { some: { campaignId: campaign.id } } },
+      where: { campaignId: campaign.id, voters: { some: {} } },
       include: {
         voters: {
           where: { campaignId: campaign.id },
@@ -119,6 +105,8 @@ export async function GET(req: NextRequest) {
         },
       },
     }),
+    // Donor data never leaves the server for members.
+    access.role === "owner" ? loadFundraising(campaign.id, campaign.fundraisingGoalCents) : null,
   ]);
 
   // Build canvass/calls by-day (last 14 days)
@@ -144,18 +132,17 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  const raisedCents = raisedAgg._sum.amountCents ?? 0;
   const votersContactedIds = new Set(votersContactedRaw.map((v) => v.id));
   const votersContacted = votersContactedIds.size;
 
   // Recent activity feed
   const recentActivity: DashboardMetrics["recentActivity"] = [];
-  if (access.role === "owner") recentDonations.slice(0, 3).forEach((d) => {
+  fundraising?.recent.slice(0, 3).forEach((d) => {
     recentActivity.push({
       kind: "donation",
       label: `${d.donor?.firstName ?? ""} ${d.donor?.lastName ?? ""} donated`,
       sub: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(d.amountCents / 100),
-      at: d.donationDate.toISOString(),
+      at: d.donationDate,
     });
   });
   recentCanvass.slice(0, 3).forEach((c) => {
@@ -214,50 +201,15 @@ export async function GET(req: NextRequest) {
       voters: votersCount,
       votersContacted,
       supporters: supportersCount,
-      donors: donorsCount,
-      donations: donationsCount,
-      raisedCents,
+      teamMembers,
+      invitesSent,
       volunteers: volunteersCount,
       events: eventsCount,
       tasksOpen,
       canvassDoors: canvassCount,
       callsMade: callsCount,
     },
-    fundraising: {
-      raisedCents,
-      goalCents: campaign.fundraisingGoalCents,
-      percent: campaign.fundraisingGoalCents > 0 ? (raisedCents / campaign.fundraisingGoalCents) * 100 : 0,
-      byMethod: donationsByMethodRaw.map((d) => ({ method: d.method, totalCents: d._sum.amountCents ?? 0 })),
-      recent: access.role !== "owner" ? [] : recentDonations.map((d) => ({
-        id: d.id,
-        amountCents: d.amountCents,
-        donationDate: d.donationDate.toISOString(),
-        method: d.method,
-        inKindDescription: d.inKindDescription,
-        earmarkNote: d.earmarkNote,
-        complianceVerified: d.complianceVerified,
-        notes: d.notes,
-        campaignId: d.campaignId,
-        donorId: d.donorId,
-        donor: d.donor
-          ? {
-              id: d.donor.id,
-              firstName: d.donor.firstName,
-              lastName: d.donor.lastName,
-              email: d.donor.email,
-              phone: d.donor.phone,
-              type: d.donor.type,
-              capacity: d.donor.capacity,
-              isRecurring: d.donor.isRecurring,
-              campaignId: d.donor.campaignId,
-              createdAt: d.donor.createdAt.toISOString(),
-              updatedAt: d.donor.updatedAt.toISOString(),
-            }
-          : undefined,
-        voterId: d.voterId,
-        createdAt: d.createdAt.toISOString(),
-      })),
-    },
+    fundraising,
     outreach: {
       supportBreakdown: supportBreakdownRaw.map((s) => ({ level: s.supportLevel, count: s._count._all })),
       canvassByDay,
@@ -284,4 +236,61 @@ export async function GET(req: NextRequest) {
   };
 
   return NextResponse.json(result);
+}
+
+async function loadFundraising(campaignId: string, goalCents: number): Promise<NonNullable<DashboardMetrics["fundraising"]>> {
+  const [donors, donations, raisedAgg, recentDonations, donationsByMethodRaw] = await Promise.all([
+    db.donor.count({ where: { campaignId } }),
+    db.donation.count({ where: { campaignId } }),
+    db.donation.aggregate({ where: { campaignId }, _sum: { amountCents: true } }),
+    db.donation.findMany({
+      where: { campaignId },
+      include: { donor: true },
+      orderBy: { donationDate: "desc" },
+      take: 5,
+    }),
+    db.donation.groupBy({
+      by: ["method"],
+      where: { campaignId },
+      _sum: { amountCents: true },
+    }),
+  ]);
+  const raisedCents = raisedAgg._sum.amountCents ?? 0;
+  return {
+    raisedCents,
+    goalCents,
+    percent: goalCents > 0 ? (raisedCents / goalCents) * 100 : 0,
+    donors,
+    donations,
+    byMethod: donationsByMethodRaw.map((d) => ({ method: d.method, totalCents: d._sum.amountCents ?? 0 })),
+    recent: recentDonations.map((d) => ({
+      id: d.id,
+      amountCents: d.amountCents,
+      donationDate: d.donationDate.toISOString(),
+      method: d.method,
+      inKindDescription: d.inKindDescription,
+      earmarkNote: d.earmarkNote,
+      complianceVerified: d.complianceVerified,
+      notes: d.notes,
+      campaignId: d.campaignId,
+      donorId: d.donorId,
+      donor: d.donor
+        ? {
+            id: d.donor.id,
+            firstName: d.donor.firstName,
+            lastName: d.donor.lastName,
+            email: d.donor.email,
+            phone: d.donor.phone,
+            type: d.donor.type,
+            capacity: d.donor.capacity,
+            isRecurring: d.donor.isRecurring,
+            campaignId: d.donor.campaignId,
+            createdAt: d.donor.createdAt.toISOString(),
+            updatedAt: d.donor.updatedAt.toISOString(),
+          }
+        : undefined,
+      voterId: d.voterId,
+      createdAt: d.createdAt.toISOString(),
+    })),
+  };
 }

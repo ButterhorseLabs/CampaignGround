@@ -1,3 +1,4 @@
+import pkg from "./package.json";
 import type { NextConfig } from "next";
 
 // 'unsafe-inline' is required for Next.js's own inline bootstrap scripts and
@@ -35,6 +36,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  env: {
+    NEXT_PUBLIC_APP_VERSION: pkg.version,
+  },
   /* config options here */
   typescript: {
     ignoreBuildErrors: false,

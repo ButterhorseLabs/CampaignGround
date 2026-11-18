@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
-import { requireCampaignAccess, assertBelongsToCampaign } from "@/lib/api-auth";
+import { requireCampaignAccess, assertBelongsToCampaign, assertCanActAsVolunteer } from "@/lib/api-auth";
 import { parseBody, parseQuery } from "@/lib/api-validate";
 import { paginationSchema } from "@/lib/validation/shared";
 import { callCreateSchema } from "@/lib/validation/call";
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
   const [voterErr, volunteerErr] = await Promise.all([
     assertBelongsToCampaign(db.voter, voterId, access.campaignId, "voter"),
-    assertBelongsToCampaign(db.volunteer, volunteerId, access.campaignId, "volunteer"),
+    volunteerId ? assertCanActAsVolunteer(access, volunteerId) : null,
   ]);
   if (voterErr) return voterErr;
   if (volunteerErr) return volunteerErr;

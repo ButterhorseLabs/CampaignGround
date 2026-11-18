@@ -22,6 +22,7 @@ import { PersonAvatar } from "@/components/common/person-avatar";
 import { StatCard } from "@/components/common/stat-card";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   Select,
   SelectContent,
@@ -34,6 +35,8 @@ import { cn } from "@/lib/utils";
 import { useApp } from "@/lib/store";
 import { useVolunteers } from "@/lib/volunteers";
 import type { Volunteer } from "@/lib/types";
+import { useSavingAction } from "@/lib/use-saving-action";
+import { AddVolunteerDialog } from "@/components/volunteers/add-volunteer-dialog";
 
 interface VolunteerRow extends Volunteer {
   _count?: { canvassLogs: number; callLogs: number; assignedTasks: number };
@@ -64,6 +67,35 @@ export function VolunteersView() {
 
   const volunteers: VolunteerRow[] = (data?.items as VolunteerRow[] | undefined) ?? [];
   const filtered = roleFilter === "all" ? volunteers : volunteers.filter((v) => v.role === roleFilter);
+  const [addOpen, setAddOpen] = useState(false);
+  const userId = useSession().data?.user.id;
+  const isLinked = volunteers.some((v) => v.userId && v.userId === userId);
+  const { saving: linking, run } = useSavingAction();
+
+  async function addMyself() {
+    await run(
+      () => fetch("/api/volunteers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, self: true }),
+      }),
+      {
+        failTitle: "Couldn't add you to the roster. Try again.",
+        onSuccess: () => {
+          toast({ title: "You're on the volunteer roster", duration: 1500 });
+          qc.invalidateQueries({ queryKey: ["volunteers", campaignId] });
+          qc.invalidateQueries({ queryKey: ["dashboard", campaignId] });
+        },
+      }
+    );
+  }
+
+  const addMyselfButton = !isLoading && userId && !isLinked && (
+    <Button type="button" variant="outline" size="sm" className="h-9" onClick={addMyself} disabled={linking}>
+      {linking ? <Loader2 className="size-3.5 mr-1 animate-spin" aria-hidden /> : null}
+      Add myself
+    </Button>
+  );
 
   // Summary metrics
   const totalHours = volunteers.reduce((s, v) => s + v.hoursLogged, 0);
@@ -111,9 +143,12 @@ export function VolunteersView() {
         <div className="text-sm text-muted-foreground ml-1">
           {filtered.length} volunteer{filtered.length !== 1 ? "s" : ""}
         </div>
-        <Button size="sm" className="ml-auto h-9">
-          <Plus className="size-3.5 mr-1" /> Add volunteer
-        </Button>
+        <div className="ml-auto flex gap-2">
+          {addMyselfButton}
+          <Button type="button" size="sm" className="h-9" onClick={() => setAddOpen(true)}>
+            <Plus className="size-3.5 mr-1" aria-hidden /> Add volunteer
+          </Button>
+        </div>
       </Card>
 
       {/* Volunteer grid */}
@@ -121,6 +156,20 @@ export function VolunteersView() {
         <div className="py-12 text-center text-muted-foreground">
           <Loader2 className="size-5 animate-spin mx-auto" />
         </div>
+      ) : volunteers.length === 0 ? (
+        <Card className="p-8 md:p-12 text-center">
+          <HeartHandshake className="size-6 mx-auto text-muted-foreground" aria-hidden />
+          <h2 className="mt-3 text-base font-semibold">No volunteers yet</h2>
+          <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
+            Add the people helping your campaign so you can assign tasks and track their hours.
+          </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <Button type="button" onClick={() => setAddOpen(true)}>
+              <Plus className="size-4 mr-1" aria-hidden /> Add volunteer
+            </Button>
+            {addMyselfButton}
+          </div>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((v) => {
@@ -206,6 +255,7 @@ export function VolunteersView() {
           })}
         </div>
       )}
+      <AddVolunteerDialog open={addOpen} onOpenChange={setAddOpen} campaignId={campaignId} />
     </div>
   );
 }

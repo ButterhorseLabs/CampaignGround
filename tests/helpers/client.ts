@@ -4,9 +4,10 @@ export function uniqueEmail(prefix = "test"): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}@example.com`;
 }
 
-// POST /api/signup is rate-limited per IP (see src/app/api/signup/route.ts).
-// Every signup in the test suite fakes a distinct X-Forwarded-For so
-// independent tests/files don't trip each other's rate-limit bucket.
+// POST /api/signup and the credentials login are rate-limited per IP (see
+// src/app/api/signup/route.ts and src/lib/auth.ts). Every signup and login in
+// the test suite fakes a distinct X-Forwarded-For so independent tests/files
+// don't trip each other's rate-limit bucket.
 function uniqueTestIp(): string {
   const octet = () => Math.floor(Math.random() * 255);
   return `10.${octet()}.${octet()}.${octet()}`;
@@ -56,7 +57,11 @@ export async function login(email: string, password: string): Promise<string> {
   const loginRes = await fetch(`${TEST_BASE_URL}/api/auth/callback/credentials`, {
     method: "POST",
     credentials: "omit",
-    headers: { "Content-Type": "application/x-www-form-urlencoded", Cookie: jar.header() },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Cookie: jar.header(),
+      "X-Forwarded-For": uniqueTestIp(),
+    },
     body: new URLSearchParams({ email, password, csrfToken, json: "true" }),
   });
   jar.absorb(loginRes);

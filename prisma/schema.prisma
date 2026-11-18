@@ -50,6 +50,23 @@ model User {
 
   memberships  CampaignMembership[]
   sentInvites  Invite[]
+  volunteers   Volunteer[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+// One-time password reset link. Only the SHA-256 of the emailed token is
+// stored, so a database read can't be replayed as a reset link.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model CampaignMembership {
@@ -189,11 +206,18 @@ model Volunteer {
   campaignId  String
   campaign    Campaign @relation(fields: [campaignId], references: [id])
 
+  // The login this roster entry belongs to, when the volunteer has one.
+  // Members can only canvass/call as their own linked volunteer.
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+
   assignedTasks Task[]
   eventAttendees EventAttendee[]
   callLogs    CallLog[]
   canvassLogs CanvassLog[]
   contactClaims ContactClaim[]
+
+  @@unique([campaignId, userId])
 }
 
 // ===== Donor =====

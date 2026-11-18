@@ -26,6 +26,8 @@ import {
   DollarSign,
   HeartHandshake,
   Loader2,
+  Plus,
+  Upload,
 } from "lucide-react";
 import { PersonAvatar } from "@/components/common/person-avatar";
 import { SupportBadge, PartyBadge } from "@/components/common/badges";
@@ -33,13 +35,17 @@ import { StatCard } from "@/components/common/stat-card";
 import { SUPPORT_LEVELS, type Voter } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useApp } from "@/lib/store";
+import { useCurrentRole } from "@/lib/memberships";
 import { useVoters } from "@/lib/voters";
 import { VoterDetailSheet } from "@/components/voters/voter-detail-sheet";
+import { AddVoterDialog } from "@/components/voters/add-voter-dialog";
+import { ImportVotersDialog } from "@/components/voters/import-voters-dialog";
 
 interface VoterRow extends Voter {
   precinct?: { name: string; code: string } | null;
   household?: { address: string } | null;
-  _count?: { callLogs: number; canvassLogs: number; donations: number };
+  /** `donations` is only present for campaign owners. */
+  _count?: { callLogs: number; canvassLogs: number; donations?: number };
 }
 
 interface Precinct {
@@ -58,6 +64,9 @@ export function VotersView() {
   const [contactedOnly, setContactedOnly] = useState(false);
   const [selected, setSelected] = useState<VoterRow | null>(null);
   const [debouncedQ, setDebouncedQ] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const isOwner = useCurrentRole() === "owner";
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 250);
@@ -80,6 +89,8 @@ export function VotersView() {
   const { data, isLoading } = useVoters(campaignId, extraParams, { staleTime: 10_000 });
 
   const voters: VoterRow[] = (data?.items as VoterRow[] | undefined) ?? [];
+  const hasFilters = Object.keys(extraParams).length > 0;
+  const noVotersYet = !isLoading && !hasFilters && data?.total === 0;
 
   // Compute summary
   const summary = useMemo(() => {
@@ -103,6 +114,46 @@ export function VotersView() {
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       if (selected?.id === id) setSelected({ ...selected, ...patch });
     }
+  }
+
+  const dialogs = (
+    <>
+      <AddVoterDialog open={addOpen} onOpenChange={setAddOpen} campaignId={campaignId} precincts={precinctsData?.items ?? []} />
+      {isOwner && <ImportVotersDialog open={importOpen} onOpenChange={setImportOpen} campaignId={campaignId} />}
+    </>
+  );
+
+  if (noVotersYet) {
+    return (
+      <div className="p-4 md:p-6">
+        <Card className="p-8 md:p-12 text-center">
+          <Users className="size-6 mx-auto text-muted-foreground" aria-hidden />
+          <h2 className="mt-3 text-base font-semibold">No voters yet</h2>
+          <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
+            {isOwner
+              ? "Import your voter list from a CSV, or add voters one at a time."
+              : "Your campaign owner can import the voter list. You can add voters one at a time."}
+          </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            {isOwner ? (
+              <>
+                <Button type="button" onClick={() => setImportOpen(true)}>
+                  <Upload className="size-4 mr-1" aria-hidden /> Import voter list
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setAddOpen(true)}>
+                  <Plus className="size-4 mr-1" aria-hidden /> Add voter
+                </Button>
+              </>
+            ) : (
+              <Button type="button" onClick={() => setAddOpen(true)}>
+                <Plus className="size-4 mr-1" aria-hidden /> Add voter
+              </Button>
+            )}
+          </div>
+        </Card>
+        {dialogs}
+      </div>
+    );
   }
 
   return (
@@ -171,6 +222,16 @@ export function VotersView() {
           >
             <Filter className="size-3.5 mr-1" /> Contacted
           </Button>
+          <div className="flex gap-2 ml-auto">
+            {isOwner && (
+              <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => setImportOpen(true)}>
+                <Upload className="size-3.5 mr-1" aria-hidden /> Import CSV
+              </Button>
+            )}
+            <Button type="button" size="sm" className="h-9" onClick={() => setAddOpen(true)}>
+              <Plus className="size-3.5 mr-1" aria-hidden /> Add voter
+            </Button>
+          </div>
         </div>
       </Card>
 
@@ -250,10 +311,12 @@ export function VotersView() {
                         <DoorOpen className="size-3" />
                         {v._count?.canvassLogs ?? 0}
                       </span>
-                      <span className="flex items-center gap-0.5" title="Donations">
-                        <DollarSign className="size-3" />
-                        {v._count?.donations ?? 0}
-                      </span>
+                      {v._count?.donations !== undefined && (
+                        <span className="flex items-center gap-0.5" title="Donations">
+                          <DollarSign className="size-3" />
+                          {v._count.donations}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-2.5 hidden md:table-cell">
@@ -284,6 +347,7 @@ export function VotersView() {
         onClose={() => setSelected(null)}
         onUpdate={updateVoter}
       />
+      {dialogs}
     </div>
   );
 }

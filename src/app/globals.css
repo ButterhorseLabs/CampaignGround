@@ -6,6 +6,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -58,8 +60,11 @@
   --secondary-foreground: oklch(0.25 0.03 155);
   --muted: oklch(0.96 0.008 130);
   --muted-foreground: oklch(0.48 0.02 150);
-  --accent: oklch(0.72 0.13 75);
-  --accent-foreground: oklch(0.22 0.04 75);
+  /* accent = shadcn's quiet hover/focus surface; highlight = Ballot Amber */
+  --accent: oklch(0.94 0.018 130);
+  --accent-foreground: oklch(0.22 0.04 155);
+  --highlight: oklch(0.72 0.13 75);
+  --highlight-foreground: oklch(0.22 0.04 75);
   --destructive: oklch(0.55 0.22 28);
   --border: oklch(0.9 0.012 130);
   --input: oklch(0.92 0.012 130);
@@ -92,8 +97,10 @@
   --secondary-foreground: oklch(0.96 0.008 130);
   --muted: oklch(0.27 0.018 150);
   --muted-foreground: oklch(0.72 0.018 130);
-  --accent: oklch(0.72 0.13 75);
-  --accent-foreground: oklch(0.18 0.04 75);
+  --accent: oklch(0.27 0.02 150);
+  --accent-foreground: oklch(0.96 0.008 130);
+  --highlight: oklch(0.72 0.13 75);
+  --highlight-foreground: oklch(0.18 0.04 75);
   --destructive: oklch(0.65 0.2 28);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
@@ -121,6 +128,9 @@
     @apply bg-background text-foreground;
     font-feature-settings: "ss01", "cv11";
   }
+  ::selection {
+    background: color-mix(in oklch, var(--primary) 22%, transparent);
+  }
 }
 
 /* Subtle civic grid texture used on auth/empty surfaces */
@@ -140,10 +150,16 @@
 /* Custom scrollbar for long lists */
 .scroll-area-thin::-webkit-scrollbar { width: 8px; height: 8px; }
 .scroll-area-thin::-webkit-scrollbar-thumb {
-  background: oklch(0.85 0.01 130);
+  background: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
   border-radius: 999px;
 }
 .scroll-area-thin::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.75 0.015 130);
+  background: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
 }
 .scroll-area-thin::-webkit-scrollbar-track { background: transparent; }
+@supports (-moz-appearance: none) {
+  .scroll-area-thin {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 35%, transparent) transparent;
+  }
+}

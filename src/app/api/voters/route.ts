@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
-import { requireCampaignAccess } from "@/lib/api-auth";
+import { requireCampaignAccess, assertBelongsToCampaign } from "@/lib/api-auth";
 import { parseBody, parseQuery } from "@/lib/api-validate";
 import { paginationSchema } from "@/lib/validation/shared";
-import { voterPatchSchema } from "@/lib/validation/voter";
+import { voterCreateSchema, voterPatchSchema } from "@/lib/validation/voter";
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -57,7 +57,8 @@ export async function GET(req: NextRequest) {
         precinct: { select: { name: true, code: true } },
         household: { select: { address: true } },
         _count: {
-          select: { callLogs: true, canvassLogs: true, donations: true },
+          // Donation counts are donor data: owners only.
+          select: { callLogs: true, canvassLogs: true, donations: access.role === "owner" },
         },
       },
     }),
@@ -95,4 +96,32 @@ export async function PATCH(req: NextRequest) {
 
   const updated = await db.voter.update({ where: { id }, data });
   return NextResponse.json(updated);
+}
+
+export async function POST(req: NextRequest) {
+  const parsed = await parseBody(req, voterCreateSchema);
+  if ("error" in parsed) return parsed.error;
+  const { campaignId, precinctId, supportLevel, ...fields } = parsed.data;
+  const access = await requireCampaignAccess(campaignId);
+  if ("error" in access) return access.error;
+
+  const precinctErr = await assertBelongsToCampaign(db.precinct, precinctId, access.campaignId, "precinct");
+  if (precinctErr) return precinctErr;
+
+  const voter = await db.voter.create({
+    data: {
+      firstName: fields.firstName,
+      lastName: fields.lastName,
+      email: fields.email || null,
+      phone: fields.phone || null,
+      partyAffiliation: fields.partyAffiliation || null,
+      registeredAddress: fields.registeredAddress || null,
+      notes: fields.notes || null,
+      tags: fields.tags || null,
+      supportLevel: supportLevel ?? "unknown",
+      precinctId: precinctId || null,
+      campaignId: access.campaignId,
+    },
+  });
+  return NextResponse.json(voter);
 }

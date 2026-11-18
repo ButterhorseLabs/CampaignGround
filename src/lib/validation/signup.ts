@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-export const passwordSchema = z.string().min(12);
+/** Shown under every new-password field; must describe passwordSchema exactly. */
+export const PASSWORD_RULE = "At least 12 characters";
+
+export const passwordSchema = z.string().min(12, `${PASSWORD_RULE}.`);
 
 export const signupSchema = z.object({
   name: z.string().min(1),

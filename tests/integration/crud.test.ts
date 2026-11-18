@@ -244,18 +244,18 @@ describe("dashboard", () => {
     const body = await res.json();
 
     expect(body.totals.voters).toBeGreaterThan(0);
-    expect(body.totals.donors).toBeGreaterThan(0);
+    expect(body.fundraising.donors).toBeGreaterThan(0);
 
     const donationsRes = await fetchAs(owner.cookie, `/api/donations?campaignId=${campaignId}`);
     const donations = await donationsRes.json();
-    expect(body.totals.donations).toBe(donations.items.length);
+    expect(body.fundraising.donations).toBe(donations.items.length);
 
     const sumCents = donations.items.reduce((s: number, d: { amountCents: number }) => s + d.amountCents, 0);
-    expect(body.totals.raisedCents).toBe(sumCents);
+    expect(body.fundraising.raisedCents).toBe(sumCents);
 
-    // A member has no visibility into donation-level detail on the dashboard.
+    // Members get no fundraising data at all on the dashboard.
     const memberRes = await fetchAs(member.cookie, `/api/dashboard?campaignId=${campaignId}`);
     const memberBody = await memberRes.json();
-    expect(memberBody.fundraising.recent).toEqual([]);
+    expect(memberBody.fundraising).toBeNull();
   });
 });

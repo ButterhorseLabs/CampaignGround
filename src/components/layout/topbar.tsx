@@ -3,17 +3,15 @@
 import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useApp } from "@/lib/store";
-import { Search, Bell, Plus, Menu, LogOut, Sun, Moon, ChevronsUpDown, UserPlus, Shield } from "lucide-react";
+import { Loader2, Menu, LogOut, Sun, Moon, ChevronsUpDown, UserPlus, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MobileNav } from "./mobile-nav";
-import { useApp as useAppStore } from "@/lib/store";
 import { Badge } from "@/components/ui/badge";
 import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
-import { useCurrentRole, useIsPlatformOwner, useMemberships } from "@/lib/memberships";
+import { useCurrentMembership, useIsPlatformOwner, useMemberships } from "@/lib/memberships";
 import { useInvites } from "@/lib/invites";
 import { useToast } from "@/hooks/use-toast";
 import { useSavingAction } from "@/lib/use-saving-action";
@@ -66,7 +64,7 @@ function initials(name: string) {
 
 export function Topbar() {
   const active = useApp((s) => s.active);
-  const setSidebar = useAppStore((s) => s.setSidebar);
+  const setSidebar = useApp((s) => s.setSidebar);
   const meta = TITLES[active] ?? { title: "CampaignGround", subtitle: "" };
 
   const { resolvedTheme, setTheme } = useTheme();
@@ -77,15 +75,15 @@ export function Topbar() {
   const memberships = membershipsData?.items ?? [];
   const currentCampaignId = useApp((s) => s.currentCampaignId);
   const setCampaign = useApp((s) => s.setCampaign);
-  const currentMembership = memberships.find((m) => m.campaignId === currentCampaignId);
-  const currentRole = useCurrentRole();
+  const currentMembership = useCurrentMembership();
+  const currentRole = currentMembership?.role ?? null;
   const isPlatformOwner = useIsPlatformOwner();
   const [inviteOpen, setInviteOpen] = useState(false);
 
   const displayName = session?.user?.name ?? session?.user?.email ?? "—";
 
   return (
-    <header className="h-16 border-b bg-card/60 backdrop-blur-sm flex items-center gap-3 px-4 md:px-6 sticky top-0 z-30">
+    <header className="h-16 border-b bg-card/60 backdrop-blur-sm flex items-center gap-2 sm:gap-3 px-4 md:px-6 sticky top-0 z-30">
       <Button
         variant="ghost"
         size="icon"
@@ -93,35 +91,20 @@ export function Topbar() {
         onClick={() => setSidebar(true)}
         aria-label="Open menu"
       >
-        <Menu className="size-5" />
+        <Menu className="size-5" aria-hidden />
       </Button>
 
       <div className="flex-1 min-w-0">
-        <h1 className="text-[17px] font-semibold leading-tight truncate">{meta.title}</h1>
+        <h1 className="text-base font-semibold leading-tight truncate">{meta.title}</h1>
         <p className="text-xs text-muted-foreground truncate hidden sm:block">{meta.subtitle}</p>
       </div>
-
-      <div className="hidden lg:flex items-center gap-2 max-w-md flex-1">
-        <div className="relative w-full">
-          <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="Search voters, donors, addresses…"
-            className="pl-9 h-9 bg-background/60"
-          />
-        </div>
-      </div>
-
-      <Button variant="outline" size="icon" className="relative" aria-label="Notifications">
-        <Bell className="size-4" />
-        <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-accent" />
-      </Button>
 
       {memberships.length > 1 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 text-xs max-w-[160px]">
+            <Button variant="outline" className="h-9 text-xs max-w-[96px] sm:max-w-[160px]">
               <span className="truncate">{currentMembership?.campaignName ?? "Select campaign"}</span>
-              <ChevronsUpDown className="size-3.5 ml-1 flex-shrink-0" />
+              <ChevronsUpDown className="size-3.5 flex-shrink-0" aria-hidden />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -146,15 +129,15 @@ export function Topbar() {
       )}
 
       {isPlatformOwner && (
-        <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Platform admin" asChild>
+        <Button variant="outline" size="icon" aria-label="Platform admin" asChild>
           <Link href="/platform-admin">
-            <Shield className="size-4" />
+            <Shield className="size-4" aria-hidden />
           </Link>
         </Button>
       )}
 
-      <div className="hidden sm:flex items-center gap-2 pl-2 border-l">
-        <Avatar className="size-8">
+      <div className="flex items-center gap-1 sm:gap-2 sm:pl-2 sm:border-l">
+        <Avatar className="size-8 hidden sm:flex">
           <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
             {initials(displayName)}
           </AvatarFallback>
@@ -166,13 +149,13 @@ export function Topbar() {
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Toggle theme"
+          aria-label={mounted && resolvedTheme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
           onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
         >
           {mounted && resolvedTheme === "dark" ? (
-            <Sun className="size-4" />
+            <Sun className="size-4" aria-hidden />
           ) : (
-            <Moon className="size-4" />
+            <Moon className="size-4" aria-hidden />
           )}
         </Button>
         <Button
@@ -181,7 +164,7 @@ export function Topbar() {
           aria-label="Sign out"
           onClick={() => signOut({ callbackUrl: "/login" })}
         >
-          <LogOut className="size-4" />
+          <LogOut className="size-4" aria-hidden />
         </Button>
       </div>
     </header>
@@ -248,8 +231,8 @@ function InviteTeammateDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Invite teammate">
-          <UserPlus className="size-4" />
+        <Button variant="outline" size="icon" aria-label="Invite teammate">
+          <UserPlus className="size-4" aria-hidden />
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -259,18 +242,24 @@ function InviteTeammateDialog({
             They'll get an email with a link to join this campaign as a member.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <Label className="text-xs">Email</Label>
-            <Input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="teammate@example.com"
-              type="email"
-              className="mt-1"
-            />
-          </div>
-        </div>
+        <form
+          id="invite-teammate-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            save();
+          }}
+        >
+          <Label htmlFor="invite-email" className="text-xs">Email</Label>
+          <Input
+            id="invite-email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="teammate@example.com"
+            type="email"
+            autoComplete="off"
+            className="mt-1"
+          />
+        </form>
         {invites.length > 0 && (
           <div className="space-y-1.5 border-t pt-3">
             <p className="text-xs font-medium text-muted-foreground">Pending invites</p>
@@ -288,7 +277,7 @@ function InviteTeammateDialog({
                     disabled={revokingId === inv.id}
                     onClick={() => revoke(inv.id)}
                   >
-                    Revoke
+                    {revokingId === inv.id ? "Revoking…" : "Revoke"}
                   </Button>
                 </div>
               ))}
@@ -299,7 +288,8 @@ function InviteTeammateDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={save} disabled={saving}>
+          <Button type="submit" form="invite-teammate-form" disabled={saving}>
+            {saving ? <Loader2 className="size-4 animate-spin mr-1" aria-hidden /> : null}
             Send invite
           </Button>
         </DialogFooter>

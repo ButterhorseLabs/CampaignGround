@@ -9,7 +9,7 @@ export async function GET() {
   const [memberships, user] = await Promise.all([
     db.campaignMembership.findMany({
       where: { userId: access.userId },
-      include: { campaign: { select: { candidateName: true, officeSought: true } } },
+      include: { campaign: { select: { candidateName: true, officeSought: true, electionDate: true } } },
       orderBy: { createdAt: "asc" },
     }),
     db.user.findUnique({ where: { id: access.userId }, select: { isPlatformOwner: true } }),
@@ -20,6 +20,7 @@ export async function GET() {
       campaignId: m.campaignId,
       campaignName: m.campaign.candidateName,
       officeSought: m.campaign.officeSought,
+      electionDate: m.campaign.electionDate.toISOString(),
       role: m.role,
     })),
     isPlatformOwner: user?.isPlatformOwner ?? false,

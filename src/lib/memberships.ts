@@ -5,6 +5,8 @@ export interface Membership {
   campaignId: string;
   campaignName: string;
   officeSought: string;
+  /** ISO timestamp */
+  electionDate: string;
   role: "owner" | "member";
 }
 
@@ -16,11 +18,14 @@ export function useMemberships() {
   });
 }
 
-export function useCurrentRole(): "owner" | "member" | null {
+export function useCurrentMembership(): Membership | null {
   const currentCampaignId = useApp((s) => s.currentCampaignId);
   const { data } = useMemberships();
-  const membership = data?.items.find((m) => m.campaignId === currentCampaignId);
-  return membership?.role ?? null;
+  return data?.items.find((m) => m.campaignId === currentCampaignId) ?? null;
+}
+
+export function useCurrentRole(): "owner" | "member" | null {
+  return useCurrentMembership()?.role ?? null;
 }
 
 export function useIsPlatformOwner(): boolean {

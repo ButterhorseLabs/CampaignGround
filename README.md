@@ -1,6 +1,6 @@
 # CampaignGround
 
-[![CI](https://github.com/tigwyk/open-candidate-crm/actions/workflows/ci.yml/badge.svg)](https://github.com/tigwyk/open-candidate-crm/actions/workflows/ci.yml)
+[![CI](https://github.com/ButterhorseLabs/CampaignGround/actions/workflows/ci.yml/badge.svg)](https://github.com/ButterhorseLabs/CampaignGround/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A voter, volunteer, donor, and outreach CRM built specifically for campaigns running for local office — city council, school board, mayor. Multi-campaign, multi-user, and free of the bloat of a generic sales CRM.
@@ -21,8 +21,9 @@ More in [`docs/screenshots/`](docs/screenshots/), including mobile views.
 
 - **8 core modules** — Dashboard, Voters, Volunteers, Donors, Canvassing, Phone Banking, Events, Tasks
 - **Multi-campaign, multi-user** — one deployment can host several campaigns, each with its own `owner`/`member` roles
-- **Duplicate-contact prevention** — a claim/lock system stops two volunteers from knocking the same door or calling the same voter at once
-- **Self-service signup** — anyone can create an account and a fresh campaign at `/signup`
+- **Duplicate-contact prevention** — a claim/lock system stops two volunteers from knocking the same household or calling the same voter at once; claims renew while held and members can only act as themselves
+- **Voter list import** — bring a CSV from your county or a spreadsheet; columns are matched for you and duplicates skipped
+- **Self-service signup** — anyone can create an account and a fresh campaign at `/signup`, with password reset by email
 - **Team invites** — campaign owners invite teammates by email (Postmark), with bounce detection and automatic re-activation on resend
 - **Production-hardened API** — every mutating route is zod-validated and rate-limited, not just auth-gated
 
@@ -46,8 +47,8 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full domain model, au
 Prerequisites: [Bun](https://bun.sh), [Docker](https://docker.com) (for local Postgres).
 
 ```bash
-git clone https://github.com/tigwyk/open-candidate-crm.git
-cd open-candidate-crm
+git clone https://github.com/ButterhorseLabs/CampaignGround.git
+cd CampaignGround
 cp .env.example .env
 
 docker compose up -d          # starts local Postgres, matches .env.example out of the box

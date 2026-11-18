@@ -6,6 +6,19 @@ import { parseBody } from "@/lib/api-validate";
 import { signupSchema } from "@/lib/validation/signup";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
+// MAX_USERS caps self-service signups on this server; unset means unlimited.
+async function signupsOpen(): Promise<boolean> {
+  const maxUsers = process.env.MAX_USERS ? parseInt(process.env.MAX_USERS, 10) : null;
+  if (maxUsers === null || Number.isNaN(maxUsers)) return true;
+  return (await db.user.count()) < maxUsers;
+}
+
+// GET /api/signup — public. Lets the signup page announce closed signups
+// before the form; only a boolean, never the user count.
+export async function GET() {
+  return NextResponse.json({ open: await signupsOpen() });
+}
+
 // POST /api/signup — public, open self-service signup. Creates a brand-new
 // User plus a blank Campaign (no demo data) with that user as owner.
 export async function POST(req: NextRequest) {
@@ -14,12 +27,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const maxUsers = process.env.MAX_USERS ? parseInt(process.env.MAX_USERS, 10) : null;
-  if (maxUsers !== null && !Number.isNaN(maxUsers)) {
-    const count = await db.user.count();
-    if (count >= maxUsers) {
-      return NextResponse.json({ error: "Signups are currently closed" }, { status: 403 });
-    }
+  if (!(await signupsOpen())) {
+    return NextResponse.json({ error: "Signups are currently closed" }, { status: 403 });
   }
 
   const parsed = await parseBody(req, signupSchema);

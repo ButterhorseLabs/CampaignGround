@@ -52,6 +52,8 @@ export interface Volunteer {
   zip?: string | null;
   notes?: string | null;
   campaignId: string;
+  /** Login this roster entry belongs to, if any. */
+  userId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -187,22 +189,26 @@ export interface DashboardMetrics {
     voters: number;
     votersContacted: number;
     supporters: number;
-    donors: number;
-    donations: number;
-    raisedCents: number;
+    /** Campaign memberships, including the owner. */
+    teamMembers: number;
+    /** Invites ever sent, any status. */
+    invitesSent: number;
     volunteers: number;
     events: number;
     tasksOpen: number;
     canvassDoors: number;
     callsMade: number;
   };
+  /** Owner-only; null for members (donor data). */
   fundraising: {
     raisedCents: number;
     goalCents: number;
     percent: number;
+    donors: number;
+    donations: number;
     byMethod: { method: string; totalCents: number }[];
     recent: Donation[];
-  };
+  } | null;
   outreach: {
     supportBreakdown: { level: string; count: number }[];
     canvassByDay: { day: string; count: number }[];
