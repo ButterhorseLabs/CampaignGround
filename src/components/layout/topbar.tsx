@@ -13,7 +13,7 @@ import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { useCurrentMembership, useIsPlatformOwner, useMemberships } from "@/lib/memberships";
 import { useInvites } from "@/lib/invites";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useSavingAction } from "@/lib/use-saving-action";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -180,7 +180,7 @@ function InviteTeammateDialog({
   onOpenChange: (o: boolean) => void;
   campaignId: string;
 }) {
-  const { toast } = useToast();
+  
   const queryClient = useQueryClient();
   const { data: invitesData } = useInvites(campaignId);
   const invites = invitesData?.items ?? [];
@@ -194,7 +194,7 @@ function InviteTeammateDialog({
 
   async function save() {
     if (!email) {
-      toast({ title: "Email required", variant: "destructive" });
+      toast.error("Email required");
       return;
     }
     await run(
@@ -206,12 +206,12 @@ function InviteTeammateDialog({
       {
         onSuccess: () => {
           setEmail("");
-          toast({ title: "Invite sent" });
+          toast("Invite sent");
           refetchInvites();
         },
         onError: async (r) => {
           const body = await r.json().catch(() => ({}));
-          toast({ title: body?.error ?? "Failed to send invite", variant: "destructive" });
+          toast.error(body?.error ?? "Failed to send invite");
         },
       }
     );
@@ -224,7 +224,7 @@ function InviteTeammateDialog({
     if (r.ok) {
       refetchInvites();
     } else {
-      toast({ title: "Failed to revoke invite", variant: "destructive" });
+      toast.error("Failed to revoke invite");
     }
   }
 

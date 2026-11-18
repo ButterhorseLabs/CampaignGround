@@ -15,7 +15,7 @@ import {
   DoorOpen,
 } from "lucide-react";
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useSavingAction } from "@/lib/use-saving-action";
 import {
   Dialog,
@@ -47,7 +47,7 @@ const TYPE_INFO: Record<string, { label: string; icon: LucideIcon; color: string
 export function CreateEventDialog({ open, onOpenChange, campaignId, onSaved }: {
   open: boolean; onOpenChange: (o: boolean) => void; campaignId: string | null; onSaved: () => void;
 }) {
-  const { toast } = useToast();
+  
   const { saving, run } = useSavingAction();
   const [title, setTitle] = useState("");
   const [type, setType] = useState("campaign");
@@ -61,7 +61,7 @@ export function CreateEventDialog({ open, onOpenChange, campaignId, onSaved }: {
 
   async function save() {
     if (!title || !date || !time) {
-      toast({ title: "Title, date, and time required", variant: "destructive" });
+      toast.error("Title, date, and time required");
       return;
     }
     const start = new Date(`${date}T${time}`);

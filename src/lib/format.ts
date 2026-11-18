@@ -7,13 +7,6 @@ export function formatCurrency(cents: number): string {
   }).format(cents / 100);
 }
 
-export function formatCurrencyDetailed(cents: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(cents / 100);
-}
-
 export function formatCompactCurrency(cents: number): string {
   const dollars = cents / 100;
   if (Math.abs(dollars) >= 1000) {
@@ -34,16 +27,6 @@ export function formatDate(input: string | Date, opts?: Intl.DateTimeFormatOptio
     day: "numeric",
     year: "numeric",
     ...opts,
-  });
-}
-
-export function formatDateTime(input: string | Date): string {
-  const d = typeof input === "string" ? new Date(input) : input;
-  return d.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
   });
 }
 

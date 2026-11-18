@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
   if (contactedOnly) {
     where.OR = [
       { callLogs: { some: { outcome: "contacted" } } },
-      { canvassLogs: { some: { outcome: "canvassed" } } },
+      { canvassLogs: { some: { outcome: "contacted" } } },
     ];
   }
 

@@ -53,7 +53,7 @@ describe("cross-campaign IDOR protection", () => {
         voterId: victimVoterId,
         volunteerId: victimVolunteerId,
         campaignId: attacker.campaignId,
-        outcome: "canvassed",
+        outcome: "contacted",
       }),
     });
 

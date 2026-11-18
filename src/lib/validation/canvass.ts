@@ -2,7 +2,7 @@ import { z } from "zod";
 import { supportLevelEnum } from "./shared";
 
 export const canvassOutcomeEnum = z.enum([
-  "canvassed",
+  "contacted",
   "not-home",
   "refused",
   "wrong-address",

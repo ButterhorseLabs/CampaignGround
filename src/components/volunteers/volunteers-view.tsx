@@ -20,7 +20,7 @@ import {
 import { LucideIcon } from "lucide-react";
 import { PersonAvatar } from "@/components/common/person-avatar";
 import { StatCard } from "@/components/common/stat-card";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -52,14 +52,13 @@ const ROLE_INFO: Record<string, { label: string; color: string; icon: LucideIcon
 };
 
 const STATUS_INFO: Record<string, { label: string; color: string }> = {
-  lead: { label: "Lead", color: "bg-violet-600 text-white" },
   active: { label: "Active", color: "bg-emerald-600 text-white" },
   inactive: { label: "Inactive", color: "bg-slate-400 text-white" },
 };
 
 export function VolunteersView() {
   const qc = useQueryClient();
-  const { toast } = useToast();
+  
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const campaignId = useApp((s) => s.currentCampaignId);
 
@@ -82,7 +81,7 @@ export function VolunteersView() {
       {
         failTitle: "Couldn't add you to the roster. Try again.",
         onSuccess: () => {
-          toast({ title: "You're on the volunteer roster", duration: 1500 });
+          toast("You're on the volunteer roster", { duration: 1500 });
           qc.invalidateQueries({ queryKey: ["volunteers", campaignId] });
           qc.invalidateQueries({ queryKey: ["dashboard", campaignId] });
         },
@@ -100,8 +99,8 @@ export function VolunteersView() {
   // Summary metrics
   const totalHours = volunteers.reduce((s, v) => s + v.hoursLogged, 0);
   const totalPledged = volunteers.reduce((s, v) => s + (v.hoursPledged ?? 0), 0);
-  const active = volunteers.filter((v) => v.status === "active" || v.status === "lead").length;
-  const leads = volunteers.filter((v) => v.status === "lead").length;
+  const active = volunteers.filter((v) => v.status === "active").length;
+  const coordinators = volunteers.filter((v) => v.role === "coordinator").length;
   const totalDoors = volunteers.reduce((s, v) => s + (v._count?.canvassLogs ?? 0), 0);
   const totalCalls = volunteers.reduce((s, v) => s + (v._count?.callLogs ?? 0), 0);
 
@@ -112,7 +111,7 @@ export function VolunteersView() {
       body: JSON.stringify({ id, status }),
     });
     if (r.ok) {
-      toast({ title: "Status updated", duration: 1500 });
+      toast("Status updated", { duration: 1500 });
       qc.invalidateQueries({ queryKey: ["volunteers"] });
     }
   }
@@ -121,9 +120,9 @@ export function VolunteersView() {
     <div className="p-4 md:p-6 space-y-4">
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon={HeartHandshake} label="Active volunteers" value={active} sub={`${leads} team leads`} accent="violet" />
+        <StatCard icon={HeartHandshake} label="Active volunteers" value={active} sub={`${coordinators} coordinators`} accent="violet" />
         <StatCard icon={Clock} label="Hours logged" value={totalHours.toFixed(0)} sub={`of ${totalPledged} pledged`} accent="emerald" />
-        <StatCard icon={DoorOpen} label="Doors knocked" value={totalDoors} sub="By volunteer team" accent="amber" />
+        <StatCard icon={DoorOpen} label="Canvass attempts" value={totalDoors} sub="Contact attempts at the door" accent="amber" />
         <StatCard icon={PhoneCall} label="Calls made" value={totalCalls} sub="By volunteer team" accent="cyan" />
       </div>
 
@@ -245,7 +244,6 @@ export function VolunteersView() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="lead">Lead</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>

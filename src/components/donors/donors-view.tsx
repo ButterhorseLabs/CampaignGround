@@ -32,7 +32,7 @@ import { useCurrentRole } from "@/lib/memberships";
 import { PersonAvatar } from "@/components/common/person-avatar";
 import { StatCard } from "@/components/common/stat-card";
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { formatCompactCurrency, formatCurrency, formatDate, relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Donor, Donation } from "@/lib/types";
@@ -55,7 +55,7 @@ const TYPE_INFO: Record<string, string> = {
 
 export function DonorsView() {
   const qc = useQueryClient();
-  const { toast } = useToast();
+  
   const [q, setQ] = useState("");
   const [capacity, setCapacity] = useState("all");
   const [type, setType] = useState("all");
@@ -205,7 +205,7 @@ export function DonorsView() {
             qc.invalidateQueries({ queryKey: ["donors"] });
             qc.invalidateQueries({ queryKey: ["all-donations"] });
             qc.invalidateQueries({ queryKey: ["dashboard"] });
-            toast({ title: "Donation recorded", duration: 1500 });
+            toast("Donation recorded", { duration: 1500 });
             setRecordOpen(false);
           }}
         />

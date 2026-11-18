@@ -17,12 +17,11 @@ export async function GET(req: NextRequest) {
     votersCount,
     votersContactedRaw,
     supportersCount,
-    teamMembers,
+    teammates,
     invitesSent,
     volunteersCount,
     eventsCount,
     tasksOpen,
-    canvassCount,
     callsCount,
     supportBreakdownRaw,
     canvassByDayRaw,
@@ -39,7 +38,7 @@ export async function GET(req: NextRequest) {
     db.voter.findMany({
       where: { campaignId: campaign.id, OR: [
         { callLogs: { some: { outcome: "contacted" } } },
-        { canvassLogs: { some: { outcome: "canvassed" } } },
+        { canvassLogs: { some: { outcome: "contacted" } } },
       ]},
       select: { id: true },
     }),
@@ -51,7 +50,6 @@ export async function GET(req: NextRequest) {
     db.volunteer.count({ where: { campaignId: campaign.id } }),
     db.event.count({ where: { campaignId: campaign.id } }),
     db.task.count({ where: { campaignId: campaign.id, status: { in: ["todo", "in-progress", "blocked"] } } }),
-    db.canvassLog.count({ where: { campaignId: campaign.id } }),
     db.callLog.count({ where: { campaignId: campaign.id } }),
     db.voter.groupBy({
       by: ["supportLevel"],
@@ -60,7 +58,7 @@ export async function GET(req: NextRequest) {
     }),
     db.canvassLog.findMany({
       where: { campaignId: campaign.id },
-      select: { contactedAt: true },
+      select: { contactedAt: true, householdId: true, voterId: true, id: true },
     }),
     db.callLog.findMany({
       where: { campaignId: campaign.id },
@@ -148,7 +146,7 @@ export async function GET(req: NextRequest) {
   recentCanvass.slice(0, 3).forEach((c) => {
     recentActivity.push({
       kind: "canvass",
-      label: `Canvassed ${c.voter?.firstName ?? ""} ${c.voter?.lastName ?? ""}`,
+      label: `Visited ${c.voter?.firstName ?? ""} ${c.voter?.lastName ?? ""}`,
       sub: c.outcome,
       at: c.contactedAt.toISOString(),
     });
@@ -201,12 +199,13 @@ export async function GET(req: NextRequest) {
       voters: votersCount,
       votersContacted,
       supporters: supportersCount,
-      teamMembers,
+      teammates,
       invitesSent,
       volunteers: volunteersCount,
       events: eventsCount,
       tasksOpen,
-      canvassDoors: canvassCount,
+      // A door is a household; voters without one count as their own door.
+      canvassDoors: new Set(canvassByDayRaw.map((c) => c.householdId ?? c.voterId ?? c.id)).size,
       callsMade: callsCount,
     },
     fundraising,

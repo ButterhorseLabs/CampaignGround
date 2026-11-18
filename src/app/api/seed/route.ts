@@ -200,7 +200,7 @@ async function seedAll(overrides?: {
 
   // ===== Volunteers =====
   const volunteerData = [
-    { first: "Maya", last: "Reyes", role: "coordinator", zip: "97204", hours: 124, status: "lead" },
+    { first: "Maya", last: "Reyes", role: "coordinator", zip: "97204", hours: 124, status: "active" },
     { first: "Tom", last: "Alvarez", role: "canvasser", zip: "97201", hours: 48, status: "active" },
     { first: "Priya", last: "Sharma", role: "phone-banker", zip: "97214", hours: 32, status: "active" },
     { first: "Eli", last: "Carter", role: "canvasser", zip: "97211", hours: 67, status: "active" },
@@ -210,7 +210,7 @@ async function seedAll(overrides?: {
     { first: "Anika", last: "Patel", role: "phone-banker", zip: "97219", hours: 29, status: "active" },
     { first: "Marcus", last: "Bauer", role: "canvasser", zip: "97212", hours: 15, status: "inactive" },
     { first: "Sofia", last: "Romano", role: "phone-banker", zip: "97206", hours: 53, status: "active" },
-    { first: "Theo", last: "Park", role: "coordinator", zip: "97210", hours: 88, status: "lead" },
+    { first: "Theo", last: "Park", role: "coordinator", zip: "97210", hours: 88, status: "active" },
     { first: "Nadia", last: "Hassan", role: "general", zip: "97233", hours: 11, status: "active" },
   ];
   const volunteerRecords = await Promise.all(
@@ -369,7 +369,7 @@ async function seedAll(overrides?: {
   }
 
   // ===== Canvass Logs =====
-  const canvassOutcomes = ["canvassed", "not-home", "refused", "wrong-address", "language-barrier"];
+  const canvassOutcomes = ["contacted", "not-home", "refused", "wrong-address", "language-barrier"];
   const canvassOutcomeWeights = [0.42, 0.32, 0.1, 0.1, 0.06];
   const issues = ["housing", "schools", "public-safety", "budget", "parks", "transit"];
   for (let i = 0; i < 80; i++) {
@@ -383,10 +383,10 @@ async function seedAll(overrides?: {
         volunteerId: volunteer.id,
         campaignId: campaign.id,
         outcome,
-        supportLevel: outcome === "canvassed" ? weightedPick(supportLevels, [0.3, 0.25, 0.25, 0.1, 0.05, 0.05]) : null,
-        yardSign: outcome === "canvassed" && Math.random() > 0.85,
-        issuePriority: outcome === "canvassed" ? pick(issues) : null,
-        notes: outcome === "canvassed" && Math.random() < 0.2 ? "Strong support; wants yard sign." : null,
+        supportLevel: outcome === "contacted" ? weightedPick(supportLevels, [0.3, 0.25, 0.25, 0.1, 0.05, 0.05]) : null,
+        yardSign: outcome === "contacted" && Math.random() > 0.85,
+        issuePriority: outcome === "contacted" ? pick(issues) : null,
+        notes: outcome === "contacted" && Math.random() < 0.2 ? "Strong support; wants yard sign." : null,
         contactedAt: new Date(now - Math.floor(Math.random() * 30) * 86_400_000),
       },
     });

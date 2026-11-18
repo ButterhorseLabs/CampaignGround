@@ -20,7 +20,7 @@ import {
 import { LucideIcon } from "lucide-react";
 import { StatCard } from "@/components/common/stat-card";
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { formatDate, formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { CampaignEvent } from "@/lib/types";
@@ -39,7 +39,7 @@ const TYPE_INFO: Record<string, { label: string; icon: LucideIcon; color: string
 
 export function EventsView() {
   const qc = useQueryClient();
-  const { toast } = useToast();
+  
   const [createOpen, setCreateOpen] = useState(false);
   const campaignId = useApp((s) => s.currentCampaignId);
 
@@ -69,7 +69,7 @@ export function EventsView() {
       body: JSON.stringify({ id, status: "completed" }),
     });
     if (r.ok) {
-      toast({ title: "Marked complete", duration: 1500 });
+      toast("Marked complete", { duration: 1500 });
       qc.invalidateQueries({ queryKey: ["events"] });
     }
   }
@@ -96,7 +96,7 @@ export function EventsView() {
           onSaved={() => {
             qc.invalidateQueries({ queryKey: ["events"] });
             qc.invalidateQueries({ queryKey: ["dashboard"] });
-            toast({ title: "Event created", duration: 1500 });
+            toast("Event created", { duration: 1500 });
             setCreateOpen(false);
           }}
         />

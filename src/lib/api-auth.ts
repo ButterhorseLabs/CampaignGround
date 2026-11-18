@@ -8,14 +8,6 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 const TOO_MANY_REQUESTS = () =>
   NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
-export async function requireSession() {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  return null;
-}
-
 type UserResult = { error: NextResponse } | { userId: string };
 
 export async function requireUser(): Promise<UserResult> {

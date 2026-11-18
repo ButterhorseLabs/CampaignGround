@@ -33,7 +33,7 @@ import { PersonAvatar } from "@/components/common/person-avatar";
 import { SupportBadge, PartyBadge } from "@/components/common/badges";
 import { StatCard } from "@/components/common/stat-card";
 import { SUPPORT_LEVELS, type Voter } from "@/lib/types";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useApp } from "@/lib/store";
 import { useCurrentRole } from "@/lib/memberships";
 import { useVoters } from "@/lib/voters";
@@ -55,7 +55,7 @@ interface Precinct {
 
 export function VotersView() {
   const qc = useQueryClient();
-  const { toast } = useToast();
+  
   const campaignId = useApp((s) => s.currentCampaignId);
   const [q, setQ] = useState("");
   const [supportFilter, setSupportFilter] = useState<string>("all");
@@ -109,7 +109,7 @@ export function VotersView() {
       body: JSON.stringify({ id, ...patch }),
     });
     if (r.ok) {
-      toast({ title: "Voter updated", duration: 1500 });
+      toast("Voter updated", { duration: 1500 });
       qc.invalidateQueries({ queryKey: ["voters"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       if (selected?.id === id) setSelected({ ...selected, ...patch });

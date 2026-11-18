@@ -14,22 +14,18 @@ import {
 import {
   PhoneCall,
   PhoneOff,
-  Voicemail,
-  PhoneMissed,
   Phone,
   Loader2,
   Clock,
   CheckCircle2,
   Plus,
   Quote,
-  PhoneForwarded,
 } from "lucide-react";
-import { LucideIcon } from "lucide-react";
 import { PersonAvatar } from "@/components/common/person-avatar";
 import { SupportBadge } from "@/components/common/badges";
 import { StatCard } from "@/components/common/stat-card";
 import { useEffect, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
@@ -39,7 +35,7 @@ import { useClaims } from "@/lib/claims";
 import { ActingAsPicker } from "@/components/common/acting-as-picker";
 import { useVoters } from "@/lib/voters";
 import { useVolunteers } from "@/lib/volunteers";
-import { LogCallDialog } from "@/components/phonebank/log-call-dialog";
+import { LogCallDialog, OUTCOME_INFO } from "@/components/phonebank/log-call-dialog";
 
 interface VoterWithExtras extends Voter {
   precinct?: { name: string } | null;
@@ -49,14 +45,6 @@ interface CallLogRow extends CallLog {
   voter?: (CallLog["voter"] & { phone?: string | null; precinct?: { name: string } | null }) | null;
 }
 
-const OUTCOME_INFO: Record<string, { label: string; color: string; icon: LucideIcon }> = {
-  contacted: { label: "Contacted", color: "text-emerald-700 bg-emerald-500/10 dark:text-emerald-300", icon: CheckCircle2 },
-  "no-answer": { label: "No answer", color: "text-slate-700 bg-slate-500/10 dark:text-slate-300", icon: PhoneOff },
-  voicemail: { label: "Voicemail", color: "text-amber-700 bg-amber-500/10 dark:text-amber-300", icon: Voicemail },
-  "wrong-number": { label: "Wrong number", color: "text-rose-700 bg-rose-500/10 dark:text-rose-300", icon: PhoneMissed },
-  refused: { label: "Refused", color: "text-rose-700 bg-rose-500/10 dark:text-rose-300", icon: PhoneOff },
-  "call-back": { label: "Call back later", color: "text-cyan-700 bg-cyan-500/10 dark:text-cyan-300", icon: PhoneForwarded },
-};
 
 const CALL_SCRIPT = `Hi, is this {firstName}?
 
@@ -72,7 +60,7 @@ Can we count on your support?
 
 export function PhoneBankView() {
   const qc = useQueryClient();
-  const { toast } = useToast();
+  
   const [outcomeFilter, setOutcomeFilter] = useState("all");
   const [logOpen, setLogOpen] = useState(false);
   const [queueIdx, setQueueIdx] = useState(0);
@@ -117,7 +105,7 @@ export function PhoneBankView() {
       if (cancelled) return;
       if (r.status === 409) {
         const body = await r.json();
-        toast({ title: `Already claimed by ${body.claimedBy}, skipping`, duration: 2000 });
+        toast(`Already claimed by ${body.claimedBy}, skipping`, { duration: 2000 });
         setQueueIdx((i) => Math.min(callQueue.length - 1, i + 1));
       }
     });
@@ -143,8 +131,8 @@ export function PhoneBankView() {
 
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon={PhoneCall} label="Calls made" value={total} sub={`${contacted} connected`} accent="cyan" />
-        <StatCard icon={CheckCircle2} label="Contact rate" value={`${contactRate.toFixed(0)}%`} sub="Pickup / dial" accent="emerald" />
+        <StatCard icon={PhoneCall} label="Calls made" value={total} sub={`${contacted} contacts`} accent="cyan" />
+        <StatCard icon={CheckCircle2} label="Contact rate" value={`${contactRate.toFixed(0)}%`} sub="Contacts per call" accent="emerald" />
         <StatCard icon={PhoneOff} label="No answer" value={noAnswer} sub="Try evening hours" accent="amber" />
         <StatCard icon={Clock} label="Avg call length" value={`${Math.floor(avgLen / 60)}:${String(Math.round(avgLen % 60)).padStart(2, "0")}`} sub="Connected calls" accent="violet" />
       </div>
@@ -309,7 +297,7 @@ export function PhoneBankView() {
           qc.invalidateQueries({ queryKey: ["call-logs"] });
           qc.invalidateQueries({ queryKey: ["voters"] });
           qc.invalidateQueries({ queryKey: ["dashboard"] });
-          toast({ title: "Call outcome logged", duration: 1500 });
+          toast("Call outcome logged", { duration: 1500 });
           setLogOpen(false);
           setQueueIdx((i) => Math.min(callQueue.length - 1, i + 1));
         }}

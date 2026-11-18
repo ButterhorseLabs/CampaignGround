@@ -14,20 +14,16 @@ import {
 import {
   DoorOpen,
   Home,
-  UserX,
-  Ban,
-  Languages,
   CheckCircle2,
   MapPin,
   Loader2,
   ClipboardList,
   Plus,
 } from "lucide-react";
-import { LucideIcon } from "lucide-react";
 import { SupportBadge } from "@/components/common/badges";
 import { StatCard } from "@/components/common/stat-card";
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
@@ -37,7 +33,7 @@ import { useClaims } from "@/lib/claims";
 import { ActingAsPicker } from "@/components/common/acting-as-picker";
 import { useVoters } from "@/lib/voters";
 import { useVolunteers } from "@/lib/volunteers";
-import { LogCanvassDialog } from "@/components/canvass/log-canvass-dialog";
+import { LogCanvassDialog, OUTCOME_INFO } from "@/components/canvass/log-canvass-dialog";
 
 interface VoterWithExtras extends Voter {
   precinct?: { name: string } | null;
@@ -49,17 +45,10 @@ interface CanvassLogRow extends CanvassLog {
   voter?: (CanvassLog["voter"] & { precinct?: { name: string } | null }) | null;
 }
 
-const OUTCOME_INFO: Record<string, { label: string; color: string; icon: LucideIcon }> = {
-  canvassed: { label: "Canvassed", color: "text-emerald-700 bg-emerald-500/10 dark:text-emerald-300", icon: CheckCircle2 },
-  "not-home": { label: "Not home", color: "text-amber-700 bg-amber-500/10 dark:text-amber-300", icon: Home },
-  refused: { label: "Refused", color: "text-rose-700 bg-rose-500/10 dark:text-rose-300", icon: Ban },
-  "wrong-address": { label: "Wrong address", color: "text-slate-700 bg-slate-500/10 dark:text-slate-300", icon: UserX },
-  "language-barrier": { label: "Language barrier", color: "text-violet-700 bg-violet-500/10 dark:text-violet-300", icon: Languages },
-};
 
 export function CanvassView() {
   const qc = useQueryClient();
-  const { toast } = useToast();
+  
   const [outcomeFilter, setOutcomeFilter] = useState("all");
   const [logOpen, setLogOpen] = useState(false);
   const [activeVolunteerId, setActiveVolunteerId] = useState("");
@@ -88,14 +77,14 @@ export function CanvassView() {
 
   async function claimVoter(voter: VoterWithExtras) {
     if (!activeVolunteerId) {
-      toast({ title: "Select who's canvassing first", variant: "destructive" });
+      toast.error("Select who's canvassing first");
       return;
     }
     if (claimedByOthers.has(voter.id)) return;
     const r = await claim(voter.id, activeVolunteerId);
     if (r.status === 409) {
       const body = await r.json();
-      toast({ title: `Already being knocked by ${body.claimedBy}`, variant: "destructive" });
+      toast.error(`Already being knocked by ${body.claimedBy}`);
       return;
     }
     setClaimedVoterId(voter.id);
@@ -121,10 +110,10 @@ export function CanvassView() {
 
   // Summary
   const total = logs.length;
-  const canvassed = logs.filter((l) => l.outcome === "canvassed").length;
+  // A door is a household; voters without one count as their own door.
+  const doors = new Set(logs.map((l) => l.householdId ?? l.voterId ?? l.id)).size;
   const notHome = logs.filter((l) => l.outcome === "not-home").length;
-  const refused = logs.filter((l) => l.outcome === "refused").length;
-  const contacted = logs.filter((l) => l.outcome === "canvassed").length;
+  const contacted = logs.filter((l) => l.outcome === "contacted").length;
   const yardSigns = logs.filter((l) => l.yardSign).length;
   const contactRate = total > 0 ? (contacted / total) * 100 : 0;
 
@@ -135,8 +124,8 @@ export function CanvassView() {
 
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon={DoorOpen} label="Doors knocked" value={total} sub="Total attempts" accent="violet" />
-        <StatCard icon={CheckCircle2} label="Contact rate" value={`${contactRate.toFixed(0)}%`} sub={`${contacted} reached`} accent="emerald" />
+        <StatCard icon={DoorOpen} label="Doors knocked" value={doors} sub={`${total} contact attempts`} accent="violet" />
+        <StatCard icon={CheckCircle2} label="Contact rate" value={`${contactRate.toFixed(0)}%`} sub={`${contacted} contacts`} accent="emerald" />
         <StatCard icon={Home} label="Not home" value={notHome} sub="Try again later" accent="amber" />
         <StatCard icon={MapPin} label="Yard signs placed" value={yardSigns} sub="Via canvass" accent="rose" />
       </div>
@@ -287,7 +276,7 @@ export function CanvassView() {
           qc.invalidateQueries({ queryKey: ["canvass-logs"] });
           qc.invalidateQueries({ queryKey: ["voters"] });
           qc.invalidateQueries({ queryKey: ["dashboard"] });
-          toast({ title: "Canvass outcome logged", duration: 1500 });
+          toast("Canvass outcome logged", { duration: 1500 });
           setLogOpen(false);
           releaseClaim();
         }}

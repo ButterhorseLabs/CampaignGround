@@ -295,7 +295,7 @@ export function DashboardView() {
           icon={DoorOpen}
           label="Doors knocked"
           value={data.totals.canvassDoors}
-          sub="Across all precincts"
+          sub="Households visited"
           accent="violet"
         />
         <StatCard
@@ -503,7 +503,7 @@ function OnboardingChecklist({ totals, isOwner, onImport }: {
   if (isOwner) {
     steps.push({
       title: "Invite your team",
-      done: totals.teamMembers > 1 || totals.invitesSent > 0,
+      done: totals.teammates > 1 || totals.invitesSent > 0,
       detail: (
         <>
           Use the invite button (<UserPlus className="inline size-3 align-[-2px]" aria-label="person with a plus sign" />) at the top of the page to give teammates their own login.

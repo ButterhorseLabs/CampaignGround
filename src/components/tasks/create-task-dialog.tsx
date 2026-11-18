@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +30,7 @@ export function CreateTaskDialog({ open, onOpenChange, volunteers, campaignId, o
   open: boolean; onOpenChange: (o: boolean) => void;
   volunteers: Volunteer[]; campaignId: string | null; onSaved: () => void;
 }) {
-  const { toast } = useToast();
+  
   const { saving, run } = useSavingAction();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -40,7 +40,7 @@ export function CreateTaskDialog({ open, onOpenChange, volunteers, campaignId, o
 
   async function save() {
     if (!title) {
-      toast({ title: "Title required", variant: "destructive" });
+      toast.error("Title required");
       return;
     }
     await run(

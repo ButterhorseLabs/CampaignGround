@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useSavingAction } from "@/lib/use-saving-action";
 import { SUPPORT_LEVELS } from "@/lib/types";
 
@@ -37,7 +37,7 @@ export function AddVoterDialog({ open, onOpenChange, campaignId, precincts }: {
 }) {
   const id = useId();
   const qc = useQueryClient();
-  const { toast } = useToast();
+  
   const { saving, run } = useSavingAction();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -56,7 +56,7 @@ export function AddVoterDialog({ open, onOpenChange, campaignId, precincts }: {
 
   async function save() {
     if (!firstName.trim() || !lastName.trim()) {
-      toast({ title: "First and last name are required", variant: "destructive" });
+      toast.error("First and last name are required");
       return;
     }
     await run(
@@ -79,7 +79,7 @@ export function AddVoterDialog({ open, onOpenChange, campaignId, precincts }: {
       {
         failTitle: "Couldn't add the voter. Check the fields and try again.",
         onSuccess: () => {
-          toast({ title: `Added ${firstName} ${lastName}`, duration: 1500 });
+          toast(`Added ${firstName} ${lastName}`, { duration: 1500 });
           qc.invalidateQueries({ queryKey: ["voters", campaignId] });
           qc.invalidateQueries({ queryKey: ["dashboard", campaignId] });
           reset();

@@ -190,6 +190,6 @@ describe("donor privacy", () => {
     const asOwner = await (await fetchAs(owner.cookie, `/api/dashboard?campaignId=${campaignId}`)).json();
     expect(asOwner.fundraising).not.toBeNull();
     expect(asOwner.fundraising.donors).toBe(1);
-    expect(asOwner.totals.teamMembers).toBe(2);
+    expect(asOwner.totals.teammates).toBe(2);
   });
 });

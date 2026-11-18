@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useIsPlatformOwner } from "@/lib/memberships";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useSavingAction } from "@/lib/use-saving-action";
 import { formatDate } from "@/lib/format";
 import {
@@ -214,14 +214,14 @@ function PlatformAdminContent() {
 }
 
 function TransferOwnershipCard() {
-  const { toast } = useToast();
+  
   const queryClient = useQueryClient();
   const { saving, run } = useSavingAction();
   const [email, setEmail] = useState("");
 
   async function transfer() {
     if (!email) {
-      toast({ title: "Email required", variant: "destructive" });
+      toast.error("Email required");
       return;
     }
     await run(
@@ -235,7 +235,7 @@ function TransferOwnershipCard() {
         failTitle: "Failed to transfer platform ownership",
         onSuccess: () => {
           setEmail("");
-          toast({ title: "Platform ownership transferred" });
+          toast("Platform ownership transferred");
           queryClient.invalidateQueries({ queryKey: ["memberships"] });
           queryClient.invalidateQueries({ queryKey: ["platform"] });
         },

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -37,8 +37,8 @@ interface VoterWithExtras extends Voter {
   household?: { address: string } | null;
 }
 
-const OUTCOME_INFO: Record<string, { label: string; color: string; icon: LucideIcon }> = {
-  canvassed: { label: "Canvassed", color: "text-emerald-700 bg-emerald-500/10 dark:text-emerald-300", icon: CheckCircle2 },
+export const OUTCOME_INFO: Record<string, { label: string; color: string; icon: LucideIcon }> = {
+  contacted: { label: "Contacted", color: "text-emerald-700 bg-emerald-500/10 dark:text-emerald-300", icon: CheckCircle2 },
   "not-home": { label: "Not home", color: "text-amber-700 bg-amber-500/10 dark:text-amber-300", icon: Home },
   refused: { label: "Refused", color: "text-rose-700 bg-rose-500/10 dark:text-rose-300", icon: Ban },
   "wrong-address": { label: "Wrong address", color: "text-slate-700 bg-slate-500/10 dark:text-slate-300", icon: UserX },
@@ -54,17 +54,17 @@ export function LogCanvassDialog({ open, onOpenChange, voters, volunteers, defau
   volunteerId?: string;
   onSaved: () => void;
 }) {
-  const { toast } = useToast();
+  
   const { saving, run } = useSavingAction();
   const [voterId, setVoterId] = useState(defaultVoterId ?? "");
-  const [outcome, setOutcome] = useState("canvassed");
+  const [outcome, setOutcome] = useState("contacted");
   const [support, setSupport] = useState("");
   const [yardSign, setYardSign] = useState(false);
   const [issue, setIssue] = useState("");
   const [notes, setNotes] = useState("");
 
   async function save() {
-    if (!voterId) { toast({ title: "Select a voter", variant: "destructive" }); return; }
+    if (!voterId) { toast.error("Select a voter"); return; }
     const voter = voters.find((v) => v.id === voterId);
     await run(
       () => fetch("/api/canvass", {
@@ -85,7 +85,7 @@ export function LogCanvassDialog({ open, onOpenChange, voters, volunteers, defau
       {
         failTitle: "Failed to log",
         onSuccess: () => {
-          setVoterId(""); setOutcome("canvassed");
+          setVoterId(""); setOutcome("contacted");
           setSupport(""); setYardSign(false); setIssue(""); setNotes("");
           onSaved();
         },
@@ -135,7 +135,7 @@ export function LogCanvassDialog({ open, onOpenChange, voters, volunteers, defau
               </Select>
             </div>
           </div>
-          {outcome === "canvassed" && (
+          {outcome === "contacted" && (
             <>
               <div>
                 <Label className="text-xs">Support level captured</Label>

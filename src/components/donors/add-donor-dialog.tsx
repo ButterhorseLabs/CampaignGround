@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useSavingAction } from "@/lib/use-saving-action";
 
 export function AddDonorDialog({ open, onOpenChange, campaignId }: {
@@ -33,7 +33,7 @@ export function AddDonorDialog({ open, onOpenChange, campaignId }: {
 }) {
   const id = useId();
   const qc = useQueryClient();
-  const { toast } = useToast();
+  
   const { saving, run } = useSavingAction();
   const empty = {
     firstName: "", lastName: "", email: "", phone: "", address: "", city: "", state: "", zip: "",
@@ -60,7 +60,7 @@ export function AddDonorDialog({ open, onOpenChange, campaignId }: {
 
   async function save() {
     if (!f.firstName.trim() || !f.lastName.trim()) {
-      toast({ title: "First and last name are required", variant: "destructive" });
+      toast.error("First and last name are required");
       return;
     }
     await run(
@@ -72,7 +72,7 @@ export function AddDonorDialog({ open, onOpenChange, campaignId }: {
       {
         failTitle: "Couldn't add the donor. Check the fields and try again.",
         onSuccess: () => {
-          toast({ title: `Added ${f.firstName} ${f.lastName}`, duration: 1500 });
+          toast(`Added ${f.firstName} ${f.lastName}`, { duration: 1500 });
           qc.invalidateQueries({ queryKey: ["donors"] });
           qc.invalidateQueries({ queryKey: ["dashboard", campaignId] });
           setF(empty); setType("individual"); setCapacity("unknown"); setIsRecurring(false);

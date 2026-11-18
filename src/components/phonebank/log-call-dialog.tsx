@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -36,7 +36,7 @@ interface VoterWithExtras extends Voter {
   precinct?: { name: string } | null;
 }
 
-const OUTCOME_INFO: Record<string, { label: string; color: string; icon: LucideIcon }> = {
+export const OUTCOME_INFO: Record<string, { label: string; color: string; icon: LucideIcon }> = {
   contacted: { label: "Contacted", color: "text-emerald-700 bg-emerald-500/10 dark:text-emerald-300", icon: CheckCircle2 },
   "no-answer": { label: "No answer", color: "text-slate-700 bg-slate-500/10 dark:text-slate-300", icon: PhoneOff },
   voicemail: { label: "Voicemail", color: "text-amber-700 bg-amber-500/10 dark:text-amber-300", icon: Voicemail },
@@ -54,7 +54,7 @@ export function LogCallDialog({ open, onOpenChange, voters, volunteers, defaultV
   volunteerId?: string;
   onSaved: () => void;
 }) {
-  const { toast } = useToast();
+  
   const { saving, run } = useSavingAction();
   const [voterId, setVoterId] = useState(defaultVoterId ?? "");
   const [outcome, setOutcome] = useState("contacted");
@@ -64,7 +64,7 @@ export function LogCallDialog({ open, onOpenChange, voters, volunteers, defaultV
   const [notes, setNotes] = useState("");
 
   async function save() {
-    if (!voterId) { toast({ title: "Select a voter", variant: "destructive" }); return; }
+    if (!voterId) { toast.error("Select a voter"); return; }
     const voter = voters.find((v) => v.id === voterId);
     await run(
       () => fetch("/api/calls", {

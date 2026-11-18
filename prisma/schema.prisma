@@ -197,7 +197,7 @@ model Volunteer {
   skills      String?  // comma separated
   hoursPledged Int?
   hoursLogged  Float    @default(0)
-  status      String   @default("active") // active, inactive, lead
+  status      String   @default("active") // active, inactive
   zip         String?
   notes       String?
   createdAt   DateTime @default(now())
@@ -340,7 +340,7 @@ model CanvassLog {
   campaignId      String
   campaign        Campaign   @relation(fields: [campaignId], references: [id])
 
-  outcome         String   @default("not-home") // canvassed, not-home, refused, wrong-address, language-barrier
+  outcome         String   @default("not-home") // contacted, not-home, refused, wrong-address, language-barrier
   supportLevel    String?  // captured: strong-support, lean-support, undecided, lean-oppose, strong-oppose
   yardSign        Boolean  @default(false)
   issuePriority   String?  // comma separated tags: housing, schools, public-safety, budget, parks

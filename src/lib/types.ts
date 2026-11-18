@@ -9,8 +9,6 @@ export type SupportLevel =
   | "strong-oppose"
   | "unknown";
 
-export type PartyAffiliation = "Dem" | "Rep" | "Ind" | "Green" | "Lib" | "NPP" | string;
-
 export interface Voter {
   id: string;
   firstName: string;
@@ -189,8 +187,8 @@ export interface DashboardMetrics {
     voters: number;
     votersContacted: number;
     supporters: number;
-    /** Campaign memberships, including the owner. */
-    teamMembers: number;
+    /** Teammates, including the owner. */
+    teammates: number;
     /** Invites ever sent, any status. */
     invitesSent: number;
     volunteers: number;
@@ -237,13 +235,4 @@ export const SUPPORT_SOURCE_LABELS: Record<string, string> = {
   manual: "manual edit",
   canvass: "canvass",
   call: "phone call",
-};
-
-export const PARTY_COLORS: Record<string, string> = {
-  Dem: "sky",
-  Rep: "rose",
-  Ind: "amber",
-  Green: "emerald",
-  Lib: "yellow",
-  NPP: "slate",
 };

@@ -15,7 +15,7 @@ import { LucideIcon } from "lucide-react";
 import { PersonAvatar } from "@/components/common/person-avatar";
 import { StatCard } from "@/components/common/stat-card";
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -48,7 +48,7 @@ const STATUS_FLOW = ["todo", "in-progress", "done", "blocked"];
 
 export function TasksView() {
   const qc = useQueryClient();
-  const { toast } = useToast();
+  
   const [createOpen, setCreateOpen] = useState(false);
   const campaignId = useApp((s) => s.currentCampaignId);
 
@@ -77,7 +77,7 @@ export function TasksView() {
       body: JSON.stringify({ id, status }),
     });
     if (r.ok) {
-      toast({ title: "Task updated", duration: 1200 });
+      toast("Task updated", { duration: 1200 });
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
     }
@@ -90,7 +90,7 @@ export function TasksView() {
       body: JSON.stringify({ id, assignedVolunteerId: volunteerId || null }),
     });
     if (r.ok) {
-      toast({ title: "Assignment updated", duration: 1200 });
+      toast("Assignment updated", { duration: 1200 });
       qc.invalidateQueries({ queryKey: ["tasks"] });
     }
   }
@@ -118,7 +118,7 @@ export function TasksView() {
           onSaved={() => {
             qc.invalidateQueries({ queryKey: ["tasks"] });
             qc.invalidateQueries({ queryKey: ["dashboard"] });
-            toast({ title: "Task created", duration: 1500 });
+            toast("Task created", { duration: 1500 });
             setCreateOpen(false);
           }}
         />

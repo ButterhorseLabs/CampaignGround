@@ -174,16 +174,16 @@ describe("canvass logs", () => {
         voterId,
         volunteerId,
         campaignId,
-        outcome: "canvassed",
+        outcome: "contacted",
         supportLevel: "strong-support",
       }),
     });
     expect(createRes.status).toBe(200);
 
-    const listRes = await fetchAs(owner.cookie, `/api/canvass?campaignId=${campaignId}&outcome=canvassed`);
+    const listRes = await fetchAs(owner.cookie, `/api/canvass?campaignId=${campaignId}&outcome=contacted`);
     const body = await listRes.json();
     expect(body.items.length).toBeGreaterThan(0);
-    expect(body.items.every((l: { outcome: string }) => l.outcome === "canvassed")).toBe(true);
+    expect(body.items.every((l: { outcome: string }) => l.outcome === "contacted")).toBe(true);
   });
 });
 

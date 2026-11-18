@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface RunOptions {
   onSuccess?: () => void;
@@ -14,7 +14,7 @@ interface RunOptions {
  * success. Field state, validation, and reset lists stay in each dialog.
  */
 export function useSavingAction() {
-  const { toast } = useToast();
+  
   const [saving, setSaving] = useState(false);
 
   async function run(action: () => Promise<Response>, opts?: RunOptions): Promise<boolean> {
@@ -26,7 +26,7 @@ export function useSavingAction() {
     } else if (opts?.onError) {
       await opts.onError(r);
     } else {
-      toast({ title: opts?.failTitle ?? "Something went wrong", variant: "destructive" });
+      toast.error(opts?.failTitle ?? "Something went wrong");
     }
     return r.ok;
   }

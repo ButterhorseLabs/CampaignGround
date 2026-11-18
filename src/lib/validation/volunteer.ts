@@ -9,7 +9,7 @@ export const volunteerRoleEnum = z.enum([
   "general",
 ]);
 
-export const volunteerStatusEnum = z.enum(["active", "inactive", "lead"]);
+export const volunteerStatusEnum = z.enum(["active", "inactive"]);
 
 export const volunteerPatchSchema = z.object({
   id: z.string().min(1),

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useSavingAction } from "@/lib/use-saving-action";
 import type { Donor } from "@/lib/types";
 import {
@@ -31,7 +31,7 @@ export function RecordDonationDialog({ open, onOpenChange, donors, onSaved }: {
   donors: Donor[];
   onSaved: () => void;
 }) {
-  const { toast } = useToast();
+  
   const { saving, run } = useSavingAction();
   const [donorId, setDonorId] = useState("");
   const [amount, setAmount] = useState("");
@@ -42,12 +42,12 @@ export function RecordDonationDialog({ open, onOpenChange, donors, onSaved }: {
 
   async function save() {
     if (!donorId || !amount) {
-      toast({ title: "Donor and amount required", variant: "destructive" });
+      toast.error("Donor and amount required");
       return;
     }
     const dollars = parseFloat(amount);
     if (isNaN(dollars) || dollars <= 0) {
-      toast({ title: "Invalid amount", variant: "destructive" });
+      toast.error("Invalid amount");
       return;
     }
     const donor = donors.find((d) => d.id === donorId);
