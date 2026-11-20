@@ -25,6 +25,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   invite links or creates the new member's roster entry.
 - `GET /api/signup` reports whether signups are open, so the signup page can
   say so before the form.
+- Signup puts the owner on their campaign's volunteer roster, linked to
+  their login, so they can canvass and call as themselves from the start.
+- County voter files import without remapping columns: "Residence Address"
+  and split house-number/street columns become the address, "Voter ID"
+  fills the new County voter ID (`Voter.countyVoterId`), and a date of birth
+  fills the birth year. Tab-separated files are detected; Excel files get
+  "Save as CSV" steps. Two rows with different County voter IDs stay two
+  voters. The summary warns when no precinct column was found.
+- Edit and delete a voter from the voter detail sheet (`PATCH` and
+  `DELETE /api/voters`). Any teammate can correct a voter's name, phone,
+  email, and street address; changing the street address takes the voter
+  out of their imported household. Only owners can delete, and a voter with
+  any contact attempt (call or canvass log) can't be deleted, so outreach
+  counts stay accurate.
 
 ### Changed
 
