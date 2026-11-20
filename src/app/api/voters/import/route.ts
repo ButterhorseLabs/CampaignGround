@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireCampaignAccess } from "@/lib/api-auth";
 import { parseBody } from "@/lib/api-validate";
+import { birthYearOf } from "@/lib/csv";
 import { supportLevelEnum } from "@/lib/validation/shared";
 import { voterImportSchema, type VoterImportRow } from "@/lib/validation/voter";
 
@@ -12,9 +13,10 @@ const normalizeText = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, "")
 
 /**
  * Bulk voter import (owners only: it writes voter PII in bulk). Rows are
- * deduplicated against the campaign and within the batch by first name, last
- * name, and normalized street address. `skipped[].row` is the 1-based index
- * into this request's `rows`.
+ * deduplicated against the campaign and within the batch: when both voters
+ * have a County voter ID they match only on that ID; otherwise they match on
+ * first name, last name, and normalized street address. `skipped[].row` is the
+ * 1-based index into this request's `rows`.
  */
 export async function POST(req: NextRequest) {
   const parsed = await parseBody(req, voterImportSchema);
@@ -30,37 +32,63 @@ export async function POST(req: NextRequest) {
     if (skipped.length < MAX_REASONS) skipped.push({ row, reason });
   };
 
+  const rows = parsed.data.rows.map(
+    (raw) => Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, v?.trim() || undefined])) as VoterImportRow
+  );
+  const distinct = (values: (string | undefined)[]) => [...new Set(values.filter((v): v is string => !!v))];
+
   const created = await db.$transaction(
     async (tx) => {
+      // Load only what this request's rows could match, not the whole campaign.
       const [existingVoters, existingPrecincts, existingHouseholds] = await Promise.all([
-        tx.voter.findMany({ where: { campaignId }, select: { firstName: true, lastName: true, registeredAddress: true } }),
+        tx.voter.findMany({
+          where: {
+            campaignId,
+            OR: [
+              { countyVoterId: { in: distinct(rows.map((r) => r.countyVoterId)) } },
+              { lastName: { in: distinct(rows.map((r) => r.lastName)), mode: "insensitive" } },
+            ],
+          },
+          select: { firstName: true, lastName: true, registeredAddress: true, countyVoterId: true },
+        }),
         tx.precinct.findMany({ where: { campaignId }, select: { id: true, name: true } }),
-        tx.household.findMany({ where: { campaignId }, select: { id: true, address: true, zip: true } }),
+        tx.household.findMany({
+          where: { campaignId, zip: { in: [...new Set(rows.map((r) => r.zip ?? ""))] } },
+          select: { id: true, address: true, zip: true },
+        }),
       ]);
 
       const voterKey = (first: string, last: string, address: string | null | undefined) =>
         `${first.toLowerCase()}|${last.toLowerCase()}|${normalizeText(address ?? "")}`;
       const householdKey = (address: string, zip: string) => `${normalizeText(address)}|${zip}`;
 
-      const seen = new Set(existingVoters.map((v) => voterKey(v.firstName, v.lastName, v.registeredAddress)));
+      const seenKeys = new Set<string>();
+      const seenKeysWithoutId = new Set<string>();
+      const seenIds = new Set<string>();
+      const remember = (key: string, countyVoterId: string | null | undefined) => {
+        seenKeys.add(key);
+        if (countyVoterId) seenIds.add(countyVoterId);
+        else seenKeysWithoutId.add(key);
+      };
+      for (const v of existingVoters) remember(voterKey(v.firstName, v.lastName, v.registeredAddress), v.countyVoterId);
       const precinctIds = new Map(existingPrecincts.map((p) => [p.name.toLowerCase(), p.id]));
       const householdIds = new Map(existingHouseholds.map((h) => [householdKey(h.address, h.zip), h.id]));
 
       const accepted: (VoterImportRow & { firstName: string; lastName: string })[] = [];
-      for (const [i, raw] of parsed.data.rows.entries()) {
-        const r = Object.fromEntries(
-          Object.entries(raw).map(([k, v]) => [k, v?.trim() || undefined])
-        ) as typeof raw;
+      for (const [i, r] of rows.entries()) {
         if (!r.firstName || !r.lastName) {
           skip(i + 1, "Missing first or last name");
           continue;
         }
         const key = voterKey(r.firstName, r.lastName, r.address);
-        if (seen.has(key)) {
+        const duplicate = r.countyVoterId
+          ? seenIds.has(r.countyVoterId) || seenKeysWithoutId.has(key)
+          : seenKeys.has(key);
+        if (duplicate) {
           skip(i + 1, "Duplicate of an existing voter");
           continue;
         }
-        seen.add(key);
+        remember(key, r.countyVoterId);
         accepted.push({ ...r, firstName: r.firstName, lastName: r.lastName });
       }
 
@@ -111,6 +139,8 @@ export async function POST(req: NextRequest) {
             phone: r.phone ?? null,
             partyAffiliation: r.partyAffiliation ?? null,
             registeredAddress: r.address ?? null,
+            countyVoterId: r.countyVoterId ?? null,
+            birthYear: r.birthYear ? birthYearOf(r.birthYear) : null,
             supportLevel: support.success ? support.data : "unknown",
             precinctId: precinctIdOf(r.precinct),
             householdId: r.address ? householdIds.get(householdKey(r.address, r.zip ?? "")) ?? null : null,

@@ -52,12 +52,13 @@ export function ImportVotersDialog({ open, onOpenChange, campaignId }: {
   const [parsed, setParsed] = useState<Parsed | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping>({});
   const [fileError, setFileError] = useState<string | null>(null);
+  const [excelFile, setExcelFile] = useState<string | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [showAllFields, setShowAllFields] = useState(false);
 
   function reset() {
-    setParsed(null); setMapping({}); setFileError(null); setProgress(null); setResult(null); setShowAllFields(false);
+    setParsed(null); setMapping({}); setFileError(null); setExcelFile(null); setProgress(null); setResult(null); setShowAllFields(false);
   }
 
   function handleOpenChange(o: boolean) {
@@ -69,9 +70,13 @@ export function ImportVotersDialog({ open, onOpenChange, campaignId }: {
   async function onFile(file: File | undefined) {
     reset();
     if (!file) return;
+    if (/\.xls[xmb]?$/i.test(file.name)) {
+      setExcelFile(file.name);
+      return;
+    }
     const rows = parseCsv(await file.text());
     if (rows.length < 2) {
-      setFileError("This file has no data rows. Check that it's a CSV with column headers in the first row.");
+      setFileError("This file has no data rows. Check that it's a CSV or tab-separated file with column headers in the first row.");
       return;
     }
     const [headers, ...data] = rows;
@@ -120,6 +125,11 @@ export function ImportVotersDialog({ open, onOpenChange, campaignId }: {
   const hiddenFieldCount = IMPORT_FIELDS.length - visibleFields.length;
   const usedColumns = new Set(Object.values(mapping));
   const ignoredColumns = parsed ? parsed.headers.map((h, i) => h || `Column ${i + 1}`).filter((_, i) => !usedColumns.has(i)) : [];
+  const noPrecinctWarning = mapping.precinct === undefined && (
+    <p className="font-medium">
+      No precinct column is matched, so every voter from this file goes into the &ldquo;No precinct&rdquo; walk list.
+    </p>
+  );
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -127,7 +137,7 @@ export function ImportVotersDialog({ open, onOpenChange, campaignId }: {
         <DialogHeader>
           <DialogTitle>Import your voter list</DialogTitle>
           <DialogDescription>
-            Upload a CSV exported from your county or a spreadsheet. We&apos;ll match the columns; check them before importing.
+            Upload the voter file from your county election office, or any spreadsheet saved as CSV. We&apos;ll match the columns; check them before importing.
           </DialogDescription>
         </DialogHeader>
 
@@ -140,6 +150,7 @@ export function ImportVotersDialog({ open, onOpenChange, campaignId }: {
                 <> Skipped <span className="font-semibold tabular-nums">{result.skippedCount.toLocaleString()}</span> {result.skippedCount === 1 ? "row" : "rows"}.</>
               )}
             </p>
+            {result.created > 0 && noPrecinctWarning}
             {result.error && (
               <p className="text-destructive">
                 Import stopped at row {result.error.stoppedAtRow}: {result.error.message}. Rows before it were saved.
@@ -172,7 +183,7 @@ export function ImportVotersDialog({ open, onOpenChange, campaignId }: {
                 <input
                   id={`${id}-file`}
                   type="file"
-                  accept=".csv,text/csv"
+                  accept=".csv,.tsv,.txt,.xlsx,.xls,text/csv,text/tab-separated-values"
                   className="peer sr-only"
                   disabled={progress !== null}
                   onChange={(e) => onFile(e.target.files?.[0])}
@@ -184,9 +195,22 @@ export function ImportVotersDialog({ open, onOpenChange, campaignId }: {
                   <Upload className="size-4" aria-hidden />
                   {parsed ? "Choose a different file" : "Choose CSV file"}
                 </Label>
-                <span className="text-sm text-muted-foreground truncate">{parsed?.fileName ?? "No file chosen"}</span>
+                <span className="text-sm text-muted-foreground truncate">{parsed?.fileName ?? excelFile ?? "No file chosen"}</span>
               </div>
               {fileError && <p className="text-sm text-destructive mt-1.5">{fileError}</p>}
+              {excelFile && (
+                <div className="mt-3 rounded-lg border bg-muted/30 p-3 text-sm space-y-1.5" role="status">
+                  <p className="font-medium">This is an Excel file. Save it as a CSV first, then choose the CSV here.</p>
+                  <ol className="list-decimal pl-5 space-y-0.5 text-muted-foreground">
+                    <li>Open the file in Excel.</li>
+                    <li>Choose File, then Save As.</li>
+                    <li>Pick the format &ldquo;CSV UTF-8 (Comma delimited) (.csv)&rdquo; and save.</li>
+                  </ol>
+                  <p className="text-muted-foreground">
+                    Using Google Sheets? Choose File, then Download, then &ldquo;Comma Separated Values (.csv)&rdquo;.
+                  </p>
+                </div>
+              )}
             </div>
 
             {parsed && (
@@ -225,6 +249,7 @@ export function ImportVotersDialog({ open, onOpenChange, campaignId }: {
                 )}
 
                 <div className="rounded-lg border bg-muted/30 p-3 text-sm space-y-1.5">
+                  {noPrecinctWarning}
                   {ignoredColumns.length > 0 && (
                     <p>
                       <span className="font-medium">Not imported:</span>{" "}
@@ -232,8 +257,8 @@ export function ImportVotersDialog({ open, onOpenChange, campaignId }: {
                     </p>
                   )}
                   <p className="text-muted-foreground">
-                    Rows with the same name and street address as a voter already on your list are skipped.
-                    Precinct names you don&apos;t have yet are added to your precincts.
+                    Rows that match a voter already on your list are skipped: by county voter ID when both have one,
+                    otherwise by name and street address. Precinct names you don&apos;t have yet are added to your precincts.
                   </p>
                 </div>
 
