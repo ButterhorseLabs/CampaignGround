@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 import { Phone, Mail, MapPin, Pencil, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -284,6 +284,9 @@ function ContactEditor({
   const [address, setAddress] = useState(voter.registeredAddress ?? "");
   const [errors, setErrors] = useState<{ first?: string; last?: string; form?: string }>({});
   const [saving, setSaving] = useState(false);
+
+  // The Edit button that had focus is gone; start the keyboard at the first field.
+  useEffect(() => firstRef.current?.focus(), []);
 
   async function save(e: FormEvent) {
     e.preventDefault();
