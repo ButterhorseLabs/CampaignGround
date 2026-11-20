@@ -177,7 +177,6 @@ model Voter {
   precinctId      String?
   precinct        Precinct?  @relation(fields: [precinctId], references: [id])
 
-  donations       Donation[]
   callLogs        CallLog[]
   canvassLogs     CanvassLog[]
   eventAttendees  EventAttendee[]
@@ -265,8 +264,6 @@ model Donation {
 
   donorId     String
   donor       Donor   @relation(fields: [donorId], references: [id])
-  voterId     String?
-  voter       Voter?  @relation(fields: [voterId], references: [id])
 }
 
 // ===== Event =====

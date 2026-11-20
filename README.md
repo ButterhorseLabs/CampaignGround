@@ -106,8 +106,11 @@ Then set these two variables on the app service (**Variables** tab) — **skippi
 | `NEXTAUTH_SECRET` | A fresh random secret — `openssl rand -base64 32`. Don't reuse a value from local `.env`. |
 | `NEXTAUTH_URL` | The exact domain from step 4, e.g. `https://your-app.up.railway.app` (include `https://`). |
 | `NODE_ENV` | `production` |
+| `MAX_USERS` | `50` — keep the pilot cap on until a privacy policy and terms of service are published. See below. |
 
-Everything else in [`.env.example`](.env.example) is optional at this point (email, signup caps) — see the Environment variables section above. You can add those later without redeploying anything else.
+**Pilot cap.** Set `MAX_USERS=50` on the hosted service until a privacy policy and terms of service exist. That is roughly 10 campaigns. The cap counts every user account, so invited teammates use slots too. Once the count is reached, self-service signup closes; existing users are unaffected. Leaving `MAX_USERS` unset means unlimited signups.
+
+Everything else in [`.env.example`](.env.example) is optional at this point (email) — see the Environment variables section above. You can add those later without redeploying anything else.
 
 ### 6. Deploy
 

@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { requireCampaignAccess } from "@/lib/api-auth";
 import { parseBody } from "@/lib/api-validate";
 import { volunteerCreateSchema, volunteerPatchSchema } from "@/lib/validation/volunteer";
+import { linkOwnVolunteer } from "@/lib/own-volunteer";
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
   if ("error" in access) return access.error;
 
   if ("self" in body) {
-    return NextResponse.json(await linkSelf(access.campaignId, access.userId));
+    return NextResponse.json(await linkOwnVolunteer(access.campaignId, access.userId));
   }
 
   const volunteer = await db.volunteer.create({
@@ -67,52 +68,4 @@ export async function POST(req: NextRequest) {
     },
   });
   return NextResponse.json(volunteer);
-}
-
-// Returns the caller's own roster entry, linking it first if needed: an
-// existing linked row wins, then an unlinked row with the caller's email
-// (same rule as invite acceptance), otherwise a new row from the account.
-async function linkSelf(campaignId: string, userId: string) {
-  const existing = await db.volunteer.findUnique({
-    where: { campaignId_userId: { campaignId, userId } },
-  });
-  if (existing) return existing;
-
-  const user = await db.user.findUniqueOrThrow({
-    where: { id: userId },
-    select: { name: true, email: true },
-  });
-
-  try {
-    const unlinked = user.email
-      ? await db.volunteer.findFirst({
-          where: { campaignId, userId: null, email: { equals: user.email, mode: "insensitive" } },
-          orderBy: { createdAt: "asc" },
-        })
-      : null;
-    if (unlinked) {
-      return await db.volunteer.update({ where: { id: unlinked.id }, data: { userId } });
-    }
-
-    const [firstName, ...rest] = (user.name ?? "").trim().split(/\s+/).filter(Boolean);
-    return await db.volunteer.create({
-      data: {
-        firstName: firstName ?? user.email?.split("@")[0] ?? "Volunteer",
-        lastName: rest.join(" "),
-        email: user.email,
-        role: "general",
-        status: "active",
-        userId,
-        campaignId,
-      },
-    });
-  } catch (e) {
-    // A concurrent request linked this user first: return that row.
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      return db.volunteer.findUniqueOrThrow({
-        where: { campaignId_userId: { campaignId, userId } },
-      });
-    }
-    throw e;
-  }
 }

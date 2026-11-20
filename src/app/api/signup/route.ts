@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { parseBody } from "@/lib/api-validate";
 import { signupSchema } from "@/lib/validation/signup";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { linkOwnVolunteer } from "@/lib/own-volunteer";
 
 // MAX_USERS caps self-service signups on this server; unset means unlimited.
 async function signupsOpen(): Promise<boolean> {
@@ -20,7 +21,8 @@ export async function GET() {
 }
 
 // POST /api/signup — public, open self-service signup. Creates a brand-new
-// User plus a blank Campaign (no demo data) with that user as owner.
+// User plus a blank Campaign (no demo data) with that user as owner and as
+// the campaign's first volunteer.
 export async function POST(req: NextRequest) {
   const ip = getClientIp(await headers());
   if (!checkRateLimit(`signup:${ip}`, { max: 5, windowMs: 60_000 })) {
@@ -70,6 +72,9 @@ export async function POST(req: NextRequest) {
     await tx.campaignMembership.create({
       data: { userId: user.id, campaignId: campaign.id, role: "owner" },
     });
+    // The owner is on their own volunteer roster from the start, so they can
+    // canvass right away without adding themselves first.
+    await linkOwnVolunteer(campaign.id, user.id, tx);
   });
 
   return NextResponse.json({ ok: true });

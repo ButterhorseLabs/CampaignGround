@@ -62,17 +62,25 @@ export async function GET(req: NextRequest) {
       include: {
         precinct: { select: { name: true, code: true } },
         household: { select: { address: true } },
-        _count: {
-          // Donation counts are donor data: owners only.
-          select: { callLogs: true, canvassLogs: true, donations: access.role === "owner" },
-        },
+        _count: { select: { callLogs: true, canvassLogs: true } },
       },
     }),
     db.voter.count({ where }),
   ]);
 
+  // A voter's donations are their donor's. Donation counts are donor data: owners only.
+  let items = voters;
+  if (access.role === "owner") {
+    const donors = await db.donor.findMany({
+      where: { campaignId: access.campaignId, voterId: { in: voters.map((v) => v.id) } },
+      select: { voterId: true, _count: { select: { donations: true } } },
+    });
+    const donations = new Map(donors.map((d) => [d.voterId, d._count.donations]));
+    items = voters.map((v) => ({ ...v, _count: { ...v._count, donations: donations.get(v.id) ?? 0 } }));
+  }
+
   return NextResponse.json({
-    items: voters,
+    items,
     total,
     offset,
     limit,

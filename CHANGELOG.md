@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Activation funnel on the platform admin page (`GET /api/platform/funnel`,
+  platform owner only): per campaign, when it signed up, first added
+  voters, added a volunteer besides the owner, sent an invite, and logged a
+  first contact attempt, with step counts and the median time from signup
+  to activation. Shows setup progress only, never record contents.
 - Voter list import: upload a CSV, check the detected column mapping, and
   import. Precincts and households are created from the file and duplicates
   are skipped (`POST /api/voters/import`, owners only).
@@ -29,6 +34,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   entry; owners can still act for anyone.
 - Members no longer receive donation counts or fundraising totals from the
   voters and dashboard APIs.
+- Donations no longer carry their own voter link; a donation's voter is its
+  donor's voter, and a voter's donation count comes through that donor. The
+  migration moves a donation's voter onto its donor when the donor had none.
 - Landing page, auth pages, and app shell redesigned against `DESIGN.md`.
 
 ## [1.0.0-rc.1] - 2026-07-02
