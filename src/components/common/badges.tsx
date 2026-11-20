@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { SUPPORT_LEVELS, type SupportLevel } from "@/lib/types";
+import { SUPPORT_LEVELS, partyLabel, type SupportLevel } from "@/lib/types";
 
 interface Props {
   level: SupportLevel | string | null | undefined;
@@ -27,47 +27,37 @@ const DOT_CLASSES: Record<string, string> = {
   slate: "bg-slate-400",
 };
 
+function supportConfig(level: Props["level"]) {
+  return SUPPORT_LEVELS.find((s) => s.value === level) ?? SUPPORT_LEVELS.find((s) => s.value === "unknown")!;
+}
+
+/** Tinted fill, text, and border for a support level, from the status ramp. */
+export const supportTone = (level: Props["level"]) => COLOR_CLASSES[supportConfig(level).color];
+
 export function SupportBadge({ level, className, size = "sm" }: Props) {
-  const config = SUPPORT_LEVELS.find((s) => s.value === level) ?? SUPPORT_LEVELS.find((s) => s.value === "unknown")!;
+  const config = supportConfig(level);
   const color = config.color;
-  const short: Record<string, string> = {
-    "strong-support": "S+",
-    "lean-support": "S",
-    "undecided": "?",
-    "lean-oppose": "O",
-    "strong-oppose": "O+",
-    "unknown": "—",
-  };
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border font-medium whitespace-nowrap",
-        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
+        size === "sm" ? "px-2 py-0.5 text-xs" : "px-2.5 py-1 text-xs",
         COLOR_CLASSES[color],
         className
       )}
     >
-      <span className={cn("size-1.5 rounded-full", DOT_CLASSES[color])} />
+      <span className={cn("size-1.5 rounded-full", DOT_CLASSES[color])} aria-hidden />
       {config.label}
     </span>
   );
 }
 
-const PARTY_STYLES: Record<string, string> = {
-  Dem: "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900",
-  Rep: "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900",
-  Ind: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900",
-  Green: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900",
-  Lib: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-300 dark:border-yellow-900",
-  NPP: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/40 dark:text-slate-300 dark:border-slate-800",
-};
-
+/** Party is shown, never colored: one neutral chip for every party (DESIGN.md, Nonpartisan Palette Rule). */
 export function PartyBadge({ party, className }: { party?: string | null; className?: string }) {
   if (!party) return null;
-  const cls = PARTY_STYLES[party] ?? PARTY_STYLES.NPP;
   return (
-    <span className={cn("inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold border", cls, className)}>
-      {party}
+    <span className={cn("inline-flex items-center rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground whitespace-nowrap", className)}>
+      {partyLabel(party)}
     </span>
   );
 }

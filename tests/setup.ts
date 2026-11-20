@@ -3,6 +3,7 @@
 // server against it, so integration tests exercise the actual built app —
 // not a dev server, not mocked route handlers — matching how every flow in
 // this app was manually verified during development.
+import { afterAll } from "bun:test";
 import { existsSync } from "fs";
 import { deriveTestDbUrl, ensureTestDatabase } from "./helpers/db";
 import { resetTestDatabase } from "./helpers/reset";
@@ -11,7 +12,8 @@ const BASE_DATABASE_URL =
   process.env.DATABASE_URL ?? "postgresql://campaignground:campaignground@localhost:55432/campaignground";
 export const TEST_DATABASE_URL = deriveTestDbUrl(BASE_DATABASE_URL);
 
-export const TEST_PORT = 3099;
+// Override with TEST_PORT (and a distinct DATABASE_URL) to run several suites side by side.
+export const TEST_PORT = Number(process.env.TEST_PORT ?? 3099);
 export const TEST_BASE_URL = `http://localhost:${TEST_PORT}`;
 export const TEST_WEBHOOK_USERNAME = "test-webhook-user";
 export const TEST_WEBHOOK_PASSWORD = "test-webhook-password";
@@ -57,6 +59,22 @@ const server = Bun.spawn({
   stderr: "inherit",
 });
 
+// The server is a separate process and outlives `bun test` unless killed.
+// afterAll in a preload runs once after every test file; it waits for the
+// process to exit so the port is free when `bun test` returns. The signal
+// handlers cover Ctrl-C and `timeout`, which skip afterAll and "exit".
+afterAll(async () => {
+  server.kill();
+  await server.exited;
+});
+process.on("exit", () => server.kill());
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(signal, () => {
+    server.kill();
+    process.exit(signal === "SIGINT" ? 130 : 143);
+  });
+}
+
 async function waitForReady(timeoutMs = 30_000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
@@ -72,7 +90,3 @@ async function waitForReady(timeoutMs = 30_000) {
 }
 await waitForReady();
 console.log("[test setup] test server ready");
-
-process.on("exit", () => {
-  server.kill();
-});

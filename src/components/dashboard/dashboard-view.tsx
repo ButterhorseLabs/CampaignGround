@@ -293,9 +293,9 @@ export function DashboardView() {
         )}
         <StatCard
           icon={DoorOpen}
-          label="Doors knocked"
+          label="Doors visited"
           value={data.totals.canvassDoors}
-          sub="Households visited"
+          sub="Households with a contact attempt"
           accent="violet"
         />
         <StatCard

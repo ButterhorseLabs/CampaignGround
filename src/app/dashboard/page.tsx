@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useApp } from "@/lib/store";
+import { useApp, type Module } from "@/lib/store";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Topbar } from "@/components/layout/topbar";
@@ -25,8 +25,34 @@ const queryClient = new QueryClient({
   },
 });
 
+const MODULES: Module[] = ["dashboard", "voters", "volunteers", "donors", "canvass", "phonebank", "events", "tasks"];
+
+/** Keeps the open module in `?view=` so refresh, Back, and shared links return to it. */
+function useModuleInUrl() {
+  const active = useApp((s) => s.active);
+  const setActive = useApp((s) => s.set);
+
+  useEffect(() => {
+    const fromUrl = () => {
+      const view = new URLSearchParams(window.location.search).get("view");
+      setActive(MODULES.find((m) => m === view) ?? "dashboard");
+    };
+    fromUrl();
+    window.addEventListener("popstate", fromUrl);
+    return () => window.removeEventListener("popstate", fromUrl);
+  }, [setActive]);
+
+  useEffect(() => {
+    // Read the store, not the render value: on first load the URL sync above has just updated it.
+    const current = useApp.getState().active;
+    const url = current === "dashboard" ? "/dashboard" : `/dashboard?view=${current}`;
+    if (window.location.pathname + window.location.search !== url) window.history.pushState(null, "", url);
+  }, [active]);
+}
+
 function Shell() {
   const active = useApp((s) => s.active);
+  useModuleInUrl();
   const currentCampaignId = useApp((s) => s.currentCampaignId);
   const setCampaign = useApp((s) => s.setCampaign);
 

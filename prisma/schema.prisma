@@ -153,6 +153,7 @@ model Voter {
   phone           String?
   partyAffiliation String? // e.g., Dem, Rep, Ind, Green, Lib
   registeredAddress String?
+  countyVoterId   String?  // the election office's ID for this voter; import dedupes on it
   birthYear       Int?
   voterSince      Int?
   votedIn2024     Boolean?
@@ -177,13 +178,14 @@ model Voter {
   precinctId      String?
   precinct        Precinct?  @relation(fields: [precinctId], references: [id])
 
-  donations       Donation[]
   callLogs        CallLog[]
   canvassLogs     CanvassLog[]
   eventAttendees  EventAttendee[]
   assignedTasks   Task[]
   donor           Donor?
   contactClaims   ContactClaim[]
+
+  @@index([campaignId, countyVoterId])
 }
 
 // ===== Volunteer =====
@@ -265,8 +267,6 @@ model Donation {
 
   donorId     String
   donor       Donor   @relation(fields: [donorId], references: [id])
-  voterId     String?
-  voter       Voter?  @relation(fields: [voterId], references: [id])
 }
 
 // ===== Event =====

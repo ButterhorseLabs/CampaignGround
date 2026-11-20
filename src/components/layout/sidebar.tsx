@@ -34,7 +34,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "People",
     items: [
-      { id: "voters", label: "Voters", icon: Users, hint: "Database" },
+      { id: "voters", label: "Voters", icon: Users },
       { id: "volunteers", label: "Volunteers", icon: HeartHandshake },
       { id: "donors", label: "Donors", icon: DollarSign, ownerOnly: true },
     ],
@@ -42,7 +42,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "Outreach",
     items: [
-      { id: "canvass", label: "Canvassing", icon: DoorOpen, hint: "Door knocks" },
+      { id: "canvass", label: "Canvassing", icon: DoorOpen, hint: "Walk lists" },
       { id: "phonebank", label: "Phone Bank", icon: PhoneCall },
     ],
   },

@@ -32,10 +32,10 @@ import {
 import { SUPPORT_LEVELS, type CanvassLog, type Voter, type Volunteer } from "@/lib/types";
 import { useSavingAction } from "@/lib/use-saving-action";
 
-interface VoterWithExtras extends Voter {
-  precinct?: { name: string } | null;
+// Only what the dialog reads, so walk-list doors and full voter rows both fit.
+type LogVoter = Pick<Voter, "id" | "firstName" | "lastName" | "householdId" | "campaignId"> & {
   household?: { address: string } | null;
-}
+};
 
 export const OUTCOME_INFO: Record<string, { label: string; color: string; icon: LucideIcon }> = {
   contacted: { label: "Contacted", color: "text-emerald-700 bg-emerald-500/10 dark:text-emerald-300", icon: CheckCircle2 },
@@ -49,7 +49,7 @@ const ISSUES = ["housing", "schools", "public-safety", "budget", "parks", "trans
 
 export function LogCanvassDialog({ open, onOpenChange, voters, volunteers, defaultVoterId, volunteerId, onSaved }: {
   open: boolean; onOpenChange: (o: boolean) => void;
-  voters: VoterWithExtras[]; volunteers: Volunteer[];
+  voters: LogVoter[]; volunteers: Volunteer[];
   defaultVoterId?: string;
   volunteerId?: string;
   onSaved: () => void;

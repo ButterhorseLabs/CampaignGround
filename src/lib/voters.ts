@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { Voter } from "@/lib/types";
 
 export interface VotersResult {
@@ -9,7 +9,7 @@ export interface VotersResult {
 export function useVoters(
   campaignId: string | null,
   extraParams?: Record<string, string>,
-  options?: { refetchInterval?: number; staleTime?: number }
+  options?: { refetchInterval?: number; staleTime?: number; keepPrevious?: boolean }
 ) {
   const paramsKey = extraParams ? JSON.stringify(extraParams) : "";
   return useQuery({
@@ -23,5 +23,7 @@ export function useVoters(
     enabled: !!campaignId,
     refetchInterval: options?.refetchInterval,
     staleTime: options?.staleTime,
+    // Paging and sorting keep the current rows on screen until the next page arrives.
+    placeholderData: options?.keepPrevious ? keepPreviousData : undefined,
   });
 }

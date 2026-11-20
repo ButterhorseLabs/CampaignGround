@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { parseBody } from "@/lib/api-validate";
 import { acceptInviteNewUserSchema } from "@/lib/validation/invite";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { linkOwnVolunteer } from "@/lib/own-volunteer";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const ip = getClientIp(await headers());
@@ -62,32 +63,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   ]);
 
   // Joining the campaign also puts the new member on the volunteer roster,
-  // linked to their login, so they can canvass and call as themselves.
-  const user = await db.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true, email: true } });
-  const [firstName, ...rest] = user.name.trim().split(/\s+/);
-  const linked = await db.volunteer.findFirst({ where: { campaignId: invite.campaignId, userId }, select: { id: true } });
-  // The invite proves ownership of the email, so adopt a roster entry the team
-  // already added for this person instead of creating a duplicate.
-  const unlinked = linked
-    ? null
-    : await db.volunteer.findFirst({
-        where: { campaignId: invite.campaignId, userId: null, email: { equals: user.email, mode: "insensitive" } },
-        select: { id: true },
-      });
-  if (unlinked) await db.volunteer.update({ where: { id: unlinked.id }, data: { userId } });
-  else await db.volunteer.upsert({
-    where: { campaignId_userId: { campaignId: invite.campaignId, userId } },
-    create: {
-      campaignId: invite.campaignId,
-      userId,
-      firstName: firstName || user.email,
-      lastName: rest.join(" "),
-      email: user.email,
-      role: "general",
-      status: "active",
-    },
-    update: {},
-  });
+  // linked to their login, so they can canvass and call as themselves. The
+  // invite proves ownership of the email, so a roster entry the team already
+  // added for this person is adopted instead of duplicated.
+  await linkOwnVolunteer(invite.campaignId, userId);
 
   return NextResponse.json({ ok: true });
 }

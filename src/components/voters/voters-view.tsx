@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,27 +17,26 @@ import {
   Search,
   Users,
   Filter,
+  Check,
   Phone,
   Mail,
-  MapPin,
-  Vote,
-  DoorOpen,
-  PhoneCall,
-  DollarSign,
-  HeartHandshake,
   Loader2,
   Plus,
   Upload,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  X,
 } from "lucide-react";
 import { PersonAvatar } from "@/components/common/person-avatar";
 import { SupportBadge, PartyBadge } from "@/components/common/badges";
-import { StatCard } from "@/components/common/stat-card";
-import { SUPPORT_LEVELS, type Voter } from "@/lib/types";
+import { PARTIES, SUPPORT_LEVELS, type Voter } from "@/lib/types";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { useApp } from "@/lib/store";
 import { useCurrentRole } from "@/lib/memberships";
 import { useVoters } from "@/lib/voters";
-import { VoterDetailSheet } from "@/components/voters/voter-detail-sheet";
+import { VoterDetailSheet, type SaveResult } from "@/components/voters/voter-detail-sheet";
 import { AddVoterDialog } from "@/components/voters/add-voter-dialog";
 import { ImportVotersDialog } from "@/components/voters/import-voters-dialog";
 
@@ -53,23 +52,37 @@ interface Precinct {
   name: string;
 }
 
+type SortKey = "name" | "precinct";
+
+const PAGE_SIZE = 50;
+
+const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
+
+function votedYears(v: Voter) {
+  return [v.votedIn2024 && "2024", v.votedIn2022 && "2022", v.votedIn2020 && "2020"].filter(Boolean).join(", ");
+}
+
 export function VotersView() {
   const qc = useQueryClient();
-  
   const campaignId = useApp((s) => s.currentCampaignId);
   const [q, setQ] = useState("");
-  const [supportFilter, setSupportFilter] = useState<string>("all");
-  const [partyFilter, setPartyFilter] = useState<string>("all");
-  const [precinctFilter, setPrecinctFilter] = useState<string>("all");
-  const [contactedOnly, setContactedOnly] = useState(false);
-  const [selected, setSelected] = useState<VoterRow | null>(null);
   const [debouncedQ, setDebouncedQ] = useState("");
+  const [supportFilter, setSupportFilter] = useState("all");
+  const [partyFilter, setPartyFilter] = useState("all");
+  const [precinctFilter, setPrecinctFilter] = useState("all");
+  const [contactedOnly, setContactedOnly] = useState(false);
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "name", dir: "asc" });
+  const [page, setPage] = useState(0);
+  const [selected, setSelected] = useState<VoterRow | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const isOwner = useCurrentRole() === "owner";
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(q), 250);
+    const t = setTimeout(() => {
+      setDebouncedQ(q);
+      setPage(0);
+    }, 250);
     return () => clearTimeout(t);
   }, [q]);
 
@@ -79,41 +92,79 @@ export function VotersView() {
     enabled: !!campaignId,
   });
 
-  const extraParams: Record<string, string> = {};
-  if (debouncedQ) extraParams.q = debouncedQ;
-  if (supportFilter !== "all") extraParams.support = supportFilter;
-  if (partyFilter !== "all") extraParams.party = partyFilter;
-  if (precinctFilter !== "all") extraParams.precinctId = precinctFilter;
-  if (contactedOnly) extraParams.contacted = "1";
+  const filters: Record<string, string> = {};
+  if (debouncedQ) filters.q = debouncedQ;
+  if (supportFilter !== "all") filters.support = supportFilter;
+  if (partyFilter !== "all") filters.party = partyFilter;
+  if (precinctFilter !== "all") filters.precinctId = precinctFilter;
+  if (contactedOnly) filters.contacted = "1";
+  const hasFilters = Object.keys(filters).length > 0 || q !== "";
 
-  const { data, isLoading } = useVoters(campaignId, extraParams, { staleTime: 10_000 });
+  const { data, isLoading, isPlaceholderData } = useVoters(
+    campaignId,
+    { ...filters, sort: sort.key, dir: sort.dir, limit: String(PAGE_SIZE), offset: String(page * PAGE_SIZE) },
+    { staleTime: 10_000, keepPrevious: true }
+  );
 
   const voters: VoterRow[] = (data?.items as VoterRow[] | undefined) ?? [];
-  const hasFilters = Object.keys(extraParams).length > 0;
+  const total = data?.total ?? 0;
   const noVotersYet = !isLoading && !hasFilters && data?.total === 0;
+  const firstShown = page * PAGE_SIZE + 1;
+  const lastShown = page * PAGE_SIZE + voters.length;
 
-  // Compute summary
-  const summary = useMemo(() => {
-    if (!voters.length) return null;
-    const supporters = voters.filter((v) => v.supportLevel === "strong-support" || v.supportLevel === "lean-support").length;
-    const contacted = voters.filter((v) => (v._count?.callLogs ?? 0) > 0 || (v._count?.canvassLogs ?? 0) > 0).length;
-    const volunteers = voters.filter((v) => v.volunteer).length;
-    const yardsigns = voters.filter((v) => v.hasYardSign).length;
-    return { total: data?.total ?? voters.length, supporters, contacted, volunteers, yardsigns };
-  }, [voters, data]);
+  // Every filter change starts again from the first page.
+  function filterBy<T>(set: (v: T) => void) {
+    return (v: T) => {
+      set(v);
+      setPage(0);
+    };
+  }
 
-  async function updateVoter(id: string, patch: Partial<Voter>) {
+  function clearFilters() {
+    setQ("");
+    setDebouncedQ("");
+    setSupportFilter("all");
+    setPartyFilter("all");
+    setPrecinctFilter("all");
+    setContactedOnly(false);
+    setPage(0);
+  }
+
+  function sortBy(key: SortKey) {
+    setSort((s) => ({ key, dir: s.key === key && s.dir === "asc" ? "desc" : "asc" }));
+    setPage(0);
+  }
+
+  // A network failure resolves to a failed response, so the sheet shows its fallback error.
+  async function sendVoter(method: "PATCH" | "DELETE", body: object): SaveResult {
     const r = await fetch("/api/voters", {
-      method: "PATCH",
+      method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...patch }),
-    });
+      body: JSON.stringify(body),
+    }).catch(() => new Response(null, { status: 503 }));
     if (r.ok) {
-      toast("Voter updated", { duration: 1500 });
       qc.invalidateQueries({ queryKey: ["voters"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
-      if (selected?.id === id) setSelected({ ...selected, ...patch });
     }
+    return r;
+  }
+
+  async function updateVoter(id: string, patch: Partial<Voter>): SaveResult {
+    const r = await sendVoter("PATCH", { id, ...patch });
+    if (!r.ok) return r;
+    const updated: Voter = await r.json();
+    toast("Voter updated", { duration: 1500 });
+    // A new street address can take the voter out of their household.
+    setSelected((s) => (s?.id === id ? { ...s, ...updated, household: updated.householdId ? s.household : null } : s));
+    return r;
+  }
+
+  async function deleteVoter(voter: Voter): SaveResult {
+    const r = await sendVoter("DELETE", { id: voter.id });
+    if (!r.ok) return r;
+    toast(`Deleted ${voter.firstName} ${voter.lastName}`, { duration: 1500 });
+    setSelected(null);
+    return r;
   }
 
   const dialogs = (
@@ -156,198 +207,304 @@ export function VotersView() {
     );
   }
 
+  const control = "h-11 md:h-9";
+  // SelectTrigger sets its height through data-size, so override that selector.
+  const selectControl = "data-[size=default]:h-11 md:data-[size=default]:h-9";
+
   return (
     <div className="p-4 md:p-6 space-y-4">
-      {/* Summary strip */}
-      {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <StatCard icon={Users} label="Total" value={summary.total} />
-          <StatCard icon={Vote} label="Supporters" value={summary.supporters} accent="emerald" />
-          <StatCard icon={PhoneCall} label="Contacted" value={summary.contacted} accent="cyan" />
-          <StatCard icon={HeartHandshake} label="Volunteers" value={summary.volunteers} accent="violet" />
-          <StatCard icon={MapPin} label="Yard signs" value={summary.yardsigns} accent="amber" />
-        </div>
-      )}
-
       {/* Filters */}
       <Card className="p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+          <div className="relative md:flex-1 md:min-w-[200px]">
+            <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" aria-hidden />
             <Input
+              aria-label="Search voters"
               placeholder="Search by name, phone, address, or notes…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              className="pl-9 h-9"
+              className={cn("pl-9", control)}
             />
           </div>
-          <Select value={supportFilter} onValueChange={setSupportFilter}>
-            <SelectTrigger className="h-9 w-[160px]">
-              <SelectValue placeholder="Support" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All support</SelectItem>
-              {SUPPORT_LEVELS.map((s) => (
-                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={partyFilter} onValueChange={setPartyFilter}>
-            <SelectTrigger className="h-9 w-[120px]">
-              <SelectValue placeholder="Party" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All parties</SelectItem>
-              {["Dem", "Rep", "Ind", "Green", "Lib", "NPP"].map((p) => (
-                <SelectItem key={p} value={p}>{p}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={precinctFilter} onValueChange={setPrecinctFilter}>
-            <SelectTrigger className="h-9 w-[180px]">
-              <SelectValue placeholder="Precinct" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All precincts</SelectItem>
-              {(precinctsData?.items ?? []).map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            variant={contactedOnly ? "default" : "outline"}
-            size="sm"
-            className="h-9"
-            onClick={() => setContactedOnly((v) => !v)}
-          >
-            <Filter className="size-3.5 mr-1" /> Contacted
-          </Button>
-          <div className="flex gap-2 ml-auto">
-            {isOwner && (
-              <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => setImportOpen(true)}>
-                <Upload className="size-3.5 mr-1" aria-hidden /> Import CSV
+          <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap">
+            <Select value={supportFilter} onValueChange={filterBy(setSupportFilter)}>
+              <SelectTrigger aria-label="Support level" className={cn("w-full md:w-[160px]", selectControl)}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All support</SelectItem>
+                {SUPPORT_LEVELS.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={partyFilter} onValueChange={filterBy(setPartyFilter)}>
+              <SelectTrigger aria-label="Party" className={cn("w-full md:w-[150px]", selectControl)}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All parties</SelectItem>
+                {PARTIES.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={precinctFilter} onValueChange={filterBy(setPrecinctFilter)}>
+              <SelectTrigger aria-label="Precinct" className={cn("w-full md:w-[180px]", selectControl)}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All precincts</SelectItem>
+                {(precinctsData?.items ?? []).map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              aria-pressed={contactedOnly}
+              className={cn(control, contactedOnly && "bg-accent border-ring")}
+              onClick={() => filterBy(setContactedOnly)(!contactedOnly)}
+            >
+              {contactedOnly ? <Check className="size-4" aria-hidden /> : <Filter className="size-4" aria-hidden />}
+              Contacted
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2 md:ml-auto">
+            {hasFilters && (
+              <Button type="button" variant="ghost" className={control} onClick={clearFilters}>
+                <X className="size-4" aria-hidden /> Clear
               </Button>
             )}
-            <Button type="button" size="sm" className="h-9" onClick={() => setAddOpen(true)}>
-              <Plus className="size-3.5 mr-1" aria-hidden /> Add voter
+            {isOwner && (
+              <Button type="button" variant="outline" className={control} onClick={() => setImportOpen(true)}>
+                <Upload className="size-4" aria-hidden /> Import CSV
+              </Button>
+            )}
+            <Button type="button" className={control} onClick={() => setAddOpen(true)}>
+              <Plus className="size-4" aria-hidden /> Add voter
             </Button>
           </div>
         </div>
       </Card>
 
-      {/* Voters table */}
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/30 text-[11px] uppercase tracking-wider text-muted-foreground">
-                <th className="text-left font-medium px-4 py-2.5">Voter</th>
-                <th className="text-left font-medium px-4 py-2.5 hidden md:table-cell">Contact</th>
-                <th className="text-left font-medium px-4 py-2.5 hidden lg:table-cell">Precinct</th>
-                <th className="text-left font-medium px-4 py-2.5">Support</th>
-                <th className="text-left font-medium px-4 py-2.5 hidden lg:table-cell">History</th>
-                <th className="text-left font-medium px-4 py-2.5 hidden md:table-cell">Tags</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
-                    <Loader2 className="size-5 animate-spin mx-auto" />
-                  </td>
-                </tr>
-              )}
-              {!isLoading && voters.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
-                    No voters match these filters.
-                  </td>
-                </tr>
-              )}
+      {/* Voters */}
+      <Card className="overflow-hidden gap-0 py-0">
+        {isLoading && !data ? (
+          <div className="px-4 py-12 text-center text-muted-foreground" role="status">
+            <Loader2 className="size-5 animate-spin mx-auto" aria-hidden />
+            <span className="sr-only">Loading voters</span>
+          </div>
+        ) : voters.length === 0 ? (
+          <div className="px-4 py-12 text-center" role="status">
+            <p className="text-sm text-muted-foreground">
+              {Object.keys(filters).length === 1 && filters.q
+                ? `No voters match “${filters.q}”.`
+                : "No voters match this search and these filters."}
+            </p>
+            <Button type="button" variant="outline" className={cn("mt-3", control)} onClick={clearFilters}>
+              Clear search and filters
+            </Button>
+          </div>
+        ) : (
+          <div className={cn("transition-opacity", isPlaceholderData && "opacity-60")}>
+            {/* Phone: one stacked row per voter */}
+            <ul className="divide-y md:hidden">
               {voters.map((v) => (
-                <tr
-                  key={v.id}
-                  className="border-b last:border-b-0 hover:bg-accent/30 cursor-pointer transition-colors"
-                  onClick={() => setSelected(v)}
-                >
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <PersonAvatar first={v.firstName} last={v.lastName} size="sm" />
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">
-                          {v.firstName} {v.lastName}
-                          {v.volunteer && <HeartHandshake className="inline size-3 ml-1.5 text-violet-500" />}
-                          {v.hasYardSign && <span className="ml-1.5 inline-block size-1.5 rounded-full bg-amber-500 align-middle" title="Yard sign" />}
-                        </div>
-                        <div className="text-[11px] text-muted-foreground truncate">
-                          {v.household?.address ?? v.registeredAddress ?? "—"}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 hidden md:table-cell">
-                    <div className="text-[12px] text-muted-foreground">
-                      {v.phone && <div className="flex items-center gap-1"><Phone className="size-3" />{v.phone}</div>}
-                      {v.email && <div className="flex items-center gap-1 truncate"><Mail className="size-3" />{v.email}</div>}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 hidden lg:table-cell">
-                    <div className="text-[12px]">{v.precinct?.name ?? "—"}</div>
-                    <div className="text-[10px] text-muted-foreground">{v.precinct?.code}</div>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-1.5">
-                      <PartyBadge party={v.partyAffiliation} />
-                      <SupportBadge level={v.supportLevel} />
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 hidden lg:table-cell">
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-0.5" title="Calls">
-                        <PhoneCall className="size-3" />
-                        {v._count?.callLogs ?? 0}
+                <li key={v.id} className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => setSelected(v)}
+                    className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:bg-accent"
+                  >
+                    <span aria-hidden><PersonAvatar first={v.firstName} last={v.lastName} size="sm" /></span>
+                    <span className="block min-w-0 flex-1">
+                      <span className="block font-medium truncate">{v.firstName} {v.lastName}</span>
+                      <span className="block text-xs text-muted-foreground truncate">
+                        {v.household?.address ?? v.registeredAddress ?? "No address"}
                       </span>
-                      <span className="flex items-center gap-0.5" title="Doors">
-                        <DoorOpen className="size-3" />
-                        {v._count?.canvassLogs ?? 0}
+                      <span className="mt-1.5 flex flex-wrap gap-1">
+                        <SupportBadge level={v.supportLevel} />
+                        <PartyBadge party={v.partyAffiliation} />
                       </span>
-                      {v._count?.donations !== undefined && (
-                        <span className="flex items-center gap-0.5" title="Donations">
-                          <DollarSign className="size-3" />
-                          {v._count.donations}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 hidden md:table-cell">
-                    <div className="flex gap-1 flex-wrap">
-                      {v.votedIn2024 && <Badge variant="outline" className="text-[10px] py-0 h-4">V24</Badge>}
-                      {v.votedIn2022 && <Badge variant="outline" className="text-[10px] py-0 h-4">V22</Badge>}
-                      {v.votedIn2020 && <Badge variant="outline" className="text-[10px] py-0 h-4">V20</Badge>}
-                      {v.tags?.split(",").map((t) => (
-                        <Badge key={t} variant="secondary" className="text-[10px] py-0 h-4">{t}</Badge>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
+                    </span>
+                  </button>
+                  {v.phone && (
+                    <a
+                      href={`tel:${v.phone}`}
+                      aria-label={`Call ${v.firstName} ${v.lastName}`}
+                      className="mr-2 grid size-11 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                    >
+                      <Phone className="size-4" aria-hidden />
+                    </a>
+                  )}
+                </li>
               ))}
-            </tbody>
-          </table>
-        </div>
-        {data?.total !== undefined && (
-          <div className="px-4 py-2 border-t text-[11px] text-muted-foreground bg-muted/20">
-            Showing {voters.length} of {data.total} voters
+            </ul>
+
+            {/* Laptop: table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <caption className="sr-only">
+                  Voters, sorted by {sort.key === "name" ? "last name" : "precinct"}. Choose a name to open the voter&apos;s record.
+                </caption>
+                <thead>
+                  <tr className="border-b bg-muted/30 text-[11px] uppercase tracking-wider text-muted-foreground">
+                    <SortHeader label="Voter" active={sort.key === "name"} dir={sort.dir} onSort={() => sortBy("name")} />
+                    <th scope="col" className="text-left font-medium px-4 py-2.5">Contact</th>
+                    <SortHeader label="Precinct" className="hidden lg:table-cell" active={sort.key === "precinct"} dir={sort.dir} onSort={() => sortBy("precinct")} />
+                    <th scope="col" className="text-left font-medium px-4 py-2.5">Support</th>
+                    <th scope="col" className="text-left font-medium px-4 py-2.5 hidden lg:table-cell">Outreach</th>
+                    <th scope="col" className="text-left font-medium px-4 py-2.5 hidden lg:table-cell">Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {voters.map((v) => {
+                    const calls = v._count?.callLogs ?? 0;
+                    const doors = v._count?.canvassLogs ?? 0;
+                    const gifts = v._count?.donations;
+                    const voted = votedYears(v);
+                    return (
+                      <tr
+                        key={v.id}
+                        className="border-b last:border-b-0 hover:bg-accent/30 cursor-pointer transition-colors"
+                        onClick={() => setSelected(v)}
+                      >
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <PersonAvatar first={v.firstName} last={v.lastName} size="sm" />
+                            <div className="min-w-0">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelected(v);
+                                }}
+                                className="font-medium truncate text-left rounded-sm hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                              >
+                                {v.firstName} {v.lastName}
+                              </button>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {v.household?.address ?? v.registeredAddress ?? "No address"}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="text-xs text-muted-foreground space-y-0.5">
+                            {v.phone && <div className="flex items-center gap-1 tabular-nums"><Phone className="size-3" aria-hidden />{v.phone}</div>}
+                            {v.email && <div className="flex items-center gap-1 truncate"><Mail className="size-3" aria-hidden />{v.email}</div>}
+                            {!v.phone && !v.email && "—"}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5 hidden lg:table-cell">
+                          <div className="whitespace-nowrap">{v.precinct?.name ?? "—"}</div>
+                          {v.precinct?.code && <div className="text-xs text-muted-foreground">{v.precinct.code}</div>}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <SupportBadge level={v.supportLevel} />
+                            <PartyBadge party={v.partyAffiliation} />
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5 hidden lg:table-cell text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+                          {calls + doors + (gifts ?? 0) === 0 ? (
+                            "None yet"
+                          ) : (
+                            <>
+                              {plural(calls, "call", "calls")} · {plural(doors, "door", "doors")}
+                              {gifts !== undefined && gifts > 0 && <> · {plural(gifts, "gift", "gifts")}</>}
+                            </>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 hidden lg:table-cell">
+                          {voted && <div className="text-xs text-muted-foreground">Voted {voted}</div>}
+                          {(v.volunteer || v.hasYardSign || v.tags) && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {v.volunteer && <Badge variant="outline" className="text-xs py-0 h-5">Volunteer</Badge>}
+                              {v.hasYardSign && <Badge variant="outline" className="text-xs py-0 h-5">Yard sign</Badge>}
+                              {v.tags?.split(",").map((t) => (
+                                <Badge key={t} variant="secondary" className="text-xs py-0 h-5">{t}</Badge>
+                              ))}
+                            </div>
+                          )}
+                          {!voted && !v.volunteer && !v.hasYardSign && !v.tags && <span className="text-xs text-muted-foreground">—</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        {total > 0 && voters.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-t text-xs text-muted-foreground bg-muted/20">
+            <span className="tabular-nums" aria-live="polite">
+              Showing {firstShown.toLocaleString()}–{lastShown.toLocaleString()} of {plural(total, "voter", "voters")}
+            </span>
+            {total > PAGE_SIZE && (
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-11 md:h-8"
+                  disabled={page === 0}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-11 md:h-8"
+                  disabled={lastShown >= total}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Card>
 
-      {/* Voter detail sheet */}
       <VoterDetailSheet
         voter={selected}
         onClose={() => setSelected(null)}
         onUpdate={updateVoter}
+        onDelete={isOwner ? deleteVoter : undefined}
       />
       {dialogs}
     </div>
+  );
+}
+
+function SortHeader({ label, active, dir, onSort, className }: {
+  label: string;
+  active: boolean;
+  dir: "asc" | "desc";
+  onSort: () => void;
+  className?: string;
+}) {
+  const Icon = !active ? ArrowUpDown : dir === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <th
+      scope="col"
+      aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : undefined}
+      className={cn("text-left font-medium px-4 py-2.5", className)}
+    >
+      <button
+        type="button"
+        onClick={onSort}
+        className="-mx-1 inline-flex items-center gap-1 rounded-sm px-1 uppercase tracking-wider hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      >
+        {label}
+        <Icon className={cn("size-3", !active && "opacity-50")} aria-hidden />
+      </button>
+    </th>
   );
 }
