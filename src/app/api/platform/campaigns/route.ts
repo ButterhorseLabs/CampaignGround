@@ -9,7 +9,8 @@ export async function GET() {
   if ("error" in access) return access.error;
 
   const campaigns = await db.campaign.findMany({
-    orderBy: { createdAt: "asc" },
+    // Newest first, matching the activation funnel.
+    orderBy: { createdAt: "desc" },
     include: {
       memberships: {
         where: { role: "owner" },

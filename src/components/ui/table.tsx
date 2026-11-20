@@ -4,11 +4,16 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+/**
+ * `scrollLabel` makes the scroll container a named, focusable region so
+ * keyboard users can scroll a table that is wider than its column.
+ */
+function Table({ className, scrollLabel, ...props }: React.ComponentProps<"table"> & { scrollLabel?: string }) {
   return (
     <div
       data-sc-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className="relative w-full overflow-x-auto rounded-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      {...(scrollLabel && { role: "region", "aria-label": scrollLabel, tabIndex: 0 })}
     >
       <table
         data-sc-slot="table"

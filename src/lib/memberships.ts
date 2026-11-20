@@ -13,8 +13,12 @@ export interface Membership {
 export function useMemberships() {
   return useQuery({
     queryKey: ["memberships"],
-    queryFn: async (): Promise<{ items: Membership[]; isPlatformOwner: boolean }> =>
-      (await fetch("/api/memberships")).json(),
+    queryFn: async (): Promise<{ items: Membership[]; isPlatformOwner: boolean }> => {
+      const r = await fetch("/api/memberships");
+      // A failed request is an error, not "no campaigns and not the platform owner".
+      if (!r.ok) throw new Error(`/api/memberships returned ${r.status}`);
+      return r.json();
+    },
   });
 }
 

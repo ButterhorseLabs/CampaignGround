@@ -28,7 +28,8 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next");
+  // `next` comes from our own links; `callbackUrl` from the auth middleware, as an absolute URL.
+  const returnTo = searchParams.get("next") ?? searchParams.get("callbackUrl");
   const created = searchParams.get("created") === "1";
   const reset = searchParams.get("reset") === "1";
   const [email, setEmail] = useState(searchParams.get("email") ?? "");
@@ -52,7 +53,7 @@ function LoginForm() {
       setError("Email or password is incorrect.");
       return;
     }
-    router.push(next && next.startsWith("/") ? next : "/dashboard");
+    router.push(sameOriginPath(returnTo) ?? "/dashboard");
     router.refresh();
   }
 
@@ -123,4 +124,15 @@ function LoginForm() {
       </Card>
     </AuthShell>
   );
+}
+
+/** Follows a return address only when it stays on this site ("//evil.example" and other origins are ignored). */
+function sameOriginPath(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const url = new URL(raw, window.location.origin);
+    return url.origin === window.location.origin ? url.pathname + url.search : null;
+  } catch {
+    return null;
+  }
 }

@@ -6,6 +6,8 @@ import { summarizeFunnel, type FunnelRow } from "@/lib/activation-funnel";
 interface FunnelQueryRow {
   campaignId: string;
   campaignName: string;
+  officeSought: string;
+  ownerName: string | null;
   teamSize: number;
   signedUpAt: Date;
   firstVoterAt: Date | null;
@@ -17,8 +19,9 @@ interface FunnelQueryRow {
 const iso = (d: Date | null) => d?.toISOString() ?? null;
 
 // GET /api/platform/funnel — per-campaign setup step times, signup through
-// activation, worked out from records the app already stores. Only times and
-// counts leave the database, never record contents (docs/legal/privacy.md).
+// activation, worked out from records the app already stores. Only campaign
+// identity (candidate, office, owner's name), times, and counts leave the
+// database, never record contents (docs/legal/privacy.md).
 export async function GET() {
   const access = await requirePlatformOwner();
   if ("error" in access) return access.error;
@@ -29,6 +32,10 @@ export async function GET() {
     SELECT
       c."id" AS "campaignId",
       c."candidateName" AS "campaignName",
+      c."officeSought" AS "officeSought",
+      (SELECT u."name" FROM "CampaignMembership" m JOIN "User" u ON u."id" = m."userId"
+        WHERE m."campaignId" = c."id" AND m."role" = 'owner'
+        ORDER BY m."createdAt" LIMIT 1) AS "ownerName",
       (SELECT COUNT(*)::int FROM "CampaignMembership" m WHERE m."campaignId" = c."id") AS "teamSize",
       c."createdAt" AS "signedUpAt",
       (SELECT MIN(v."createdAt") FROM "Voter" v WHERE v."campaignId" = c."id") AS "firstVoterAt",
@@ -50,6 +57,8 @@ export async function GET() {
   const items: FunnelRow[] = rows.map((r) => ({
     campaignId: r.campaignId,
     campaignName: r.campaignName,
+    officeSought: r.officeSought,
+    ownerName: r.ownerName,
     teamSize: r.teamSize,
     signedUpAt: r.signedUpAt.toISOString(),
     firstVoterAt: iso(r.firstVoterAt),

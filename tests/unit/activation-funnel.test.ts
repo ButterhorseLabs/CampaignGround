@@ -8,6 +8,8 @@ function row(activatedAfterHours: number | null, overrides: Partial<FunnelRow> =
   return {
     campaignId: Math.random().toString(36),
     campaignName: "Campaign",
+    officeSought: "City Council",
+    ownerName: "Owner",
     teamSize: 1,
     signedUpAt: signup,
     firstVoterAt: null,

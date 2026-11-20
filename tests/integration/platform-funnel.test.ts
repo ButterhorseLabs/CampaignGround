@@ -118,7 +118,7 @@ describe("activation funnel", () => {
 
     // Setup progress only: nothing from the campaign's voter or volunteer records.
     expect(Object.keys(row).sort()).toEqual(
-      ["campaignId", "campaignName", "teamSize", ...STEP_FIELDS].sort()
+      ["campaignId", "campaignName", "officeSought", "ownerName", "teamSize", ...STEP_FIELDS].sort()
     );
     const raw = JSON.stringify(await getFunnel(platformOwner.cookie));
     expect(raw).not.toContain("pat.voter@example.com");

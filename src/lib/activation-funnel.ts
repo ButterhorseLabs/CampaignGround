@@ -16,6 +16,9 @@ export type FunnelStep = (typeof FUNNEL_STEPS)[number];
 export type FunnelRow = {
   campaignId: string;
   campaignName: string;
+  officeSought: string;
+  /** The campaign owner's account name; null only if the campaign has no owner. */
+  ownerName: string | null;
   teamSize: number;
   signedUpAt: string;
 } & Record<Exclude<FunnelStep, "signedUpAt">, string | null>;
