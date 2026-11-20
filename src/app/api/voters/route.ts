@@ -157,13 +157,13 @@ export async function DELETE(req: NextRequest) {
   // leave "Unknown voter" rows that can't be tied back to anyone.
   if (voter._count.callLogs + voter._count.canvassLogs > 0) {
     return NextResponse.json(
-      { error: `${voter.firstName} ${voter.lastName} has call or door-knock history, so they can't be deleted. Correct their details instead.` },
+      { error: `${voter.firstName} ${voter.lastName} has contact attempts on record, so they can't be deleted. Correct their details instead.` },
       { status: 409 }
     );
   }
 
-  // A claim only means someone has this voter open; release it. Donation, donor,
-  // task and RSVP links are cleared by their ON DELETE SET NULL foreign keys.
+  // A claim only means someone has this voter open; release it. Donor, task and
+  // RSVP links are cleared by their ON DELETE SET NULL foreign keys.
   await db.$transaction([
     db.contactClaim.deleteMany({ where: { voterId: id } }),
     db.voter.delete({ where: { id } }),

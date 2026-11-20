@@ -326,7 +326,7 @@ describe("correcting and deleting a voter", () => {
     expect(claims.items.map((c: { voterId: string }) => c.voterId)).not.toContain(voter.id);
   });
 
-  test("a voter with call or door-knock history can't be deleted, so outreach counts don't change", async () => {
+  test("a voter with contact attempts can't be deleted, so outreach counts don't change", async () => {
     const voter = await addVoter({ firstName: "Hist", lastName: "Ory" });
     const call = await post(owner.cookie, "/api/calls", { campaignId, voterId: voter.id, outcome: "contacted" });
     expect(call.status).toBe(200);
@@ -335,7 +335,7 @@ describe("correcting and deleting a voter", () => {
 
     const res = await send(owner.cookie, "DELETE", { id: voter.id });
     expect(res.status).toBe(409);
-    expect((await res.json()).error).toContain("Hist Ory has call or door-knock history");
+    expect((await res.json()).error).toContain("Hist Ory has contact attempts on record");
     expect(await findVoter("Ory")).toHaveLength(1);
     expect(await dashboard()).toEqual(before);
   });

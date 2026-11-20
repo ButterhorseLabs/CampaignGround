@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { useApp } from "@/lib/store";
 import { useCurrentRole } from "@/lib/memberships";
 import { useVoters } from "@/lib/voters";
-import { VoterDetailSheet } from "@/components/voters/voter-detail-sheet";
+import { VoterDetailSheet, type SaveResult } from "@/components/voters/voter-detail-sheet";
 import { AddVoterDialog } from "@/components/voters/add-voter-dialog";
 import { ImportVotersDialog } from "@/components/voters/import-voters-dialog";
 
@@ -135,41 +135,36 @@ export function VotersView() {
     setPage(0);
   }
 
-  /** Resolves to the error to show, or null once saved. */
-  async function updateVoter(id: string, patch: Partial<Voter>): Promise<string | null> {
+  // A network failure resolves to a failed response, so the sheet shows its fallback error.
+  async function sendVoter(method: "PATCH" | "DELETE", body: object): SaveResult {
     const r = await fetch("/api/voters", {
-      method: "PATCH",
+      method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...patch }),
-    }).catch(() => null);
-    if (!r?.ok) {
-      const body = await r?.json().catch(() => null);
-      return body?.error ?? "Couldn't save that change. Check your connection and try again.";
+      body: JSON.stringify(body),
+    }).catch(() => new Response(null, { status: 503 }));
+    if (r.ok) {
+      qc.invalidateQueries({ queryKey: ["voters"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
     }
-    const updated: Voter = await r.json();
-    toast("Voter updated", { duration: 1500 });
-    qc.invalidateQueries({ queryKey: ["voters"] });
-    qc.invalidateQueries({ queryKey: ["dashboard"] });
-    // A new street address can take the voter out of their household.
-    setSelected((s) => (s?.id === id ? { ...s, ...updated, household: updated.householdId ? s.household : null } : s));
-    return null;
+    return r;
   }
 
-  async function deleteVoter(voter: Voter): Promise<string | null> {
-    const r = await fetch("/api/voters", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: voter.id }),
-    }).catch(() => null);
-    if (!r?.ok) {
-      const body = await r?.json().catch(() => null);
-      return body?.error ?? "Couldn't delete this voter. Check your connection and try again.";
-    }
+  async function updateVoter(id: string, patch: Partial<Voter>): SaveResult {
+    const r = await sendVoter("PATCH", { id, ...patch });
+    if (!r.ok) return r;
+    const updated: Voter = await r.json();
+    toast("Voter updated", { duration: 1500 });
+    // A new street address can take the voter out of their household.
+    setSelected((s) => (s?.id === id ? { ...s, ...updated, household: updated.householdId ? s.household : null } : s));
+    return r;
+  }
+
+  async function deleteVoter(voter: Voter): SaveResult {
+    const r = await sendVoter("DELETE", { id: voter.id });
+    if (!r.ok) return r;
     toast(`Deleted ${voter.firstName} ${voter.lastName}`, { duration: 1500 });
-    qc.invalidateQueries({ queryKey: ["voters"] });
-    qc.invalidateQueries({ queryKey: ["dashboard"] });
     setSelected(null);
-    return null;
+    return r;
   }
 
   const dialogs = (

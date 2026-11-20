@@ -2,13 +2,13 @@ import { z } from "zod";
 import { supportLevelEnum } from "./shared";
 
 const optionalText = z.string().trim().max(500).nullable().optional();
-const name = z.string().trim().min(1).max(100);
+const personName = z.string().trim().min(1).max(100);
 
 export const voterIdSchema = z.object({ id: z.string().min(1) });
 
 export const voterPatchSchema = voterIdSchema.extend({
-  firstName: name.optional(),
-  lastName: name.optional(),
+  firstName: personName.optional(),
+  lastName: personName.optional(),
   phone: optionalText,
   email: optionalText,
   registeredAddress: optionalText,
@@ -22,8 +22,8 @@ export const voterPatchSchema = voterIdSchema.extend({
 
 export const voterCreateSchema = z.object({
   campaignId: z.string().min(1),
-  firstName: name,
-  lastName: name,
+  firstName: personName,
+  lastName: personName,
   email: optionalText,
   phone: optionalText,
   partyAffiliation: optionalText,
