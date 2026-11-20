@@ -1,4 +1,6 @@
+@layer ui-sdk;
 @import "tailwindcss";
+@import "@ui-sdk/core/web.css" layer(components);
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
@@ -118,6 +120,32 @@
   --sidebar-accent-foreground: oklch(0.96 0.008 130);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.55 0.09 155);
+}
+
+/* ui-sdk tokens follow the app theme. next-themes sets color-scheme inline, so dark mode follows the toggle, not the OS. */
+:root {
+  --ui-background: var(--background);
+  --ui-foreground: var(--foreground);
+  --ui-muted: var(--muted);
+  --ui-muted-foreground: var(--muted-foreground);
+  --ui-border: var(--border);
+  --ui-input: var(--input);
+  --ui-primary: var(--primary);
+  --ui-primary-foreground: var(--primary-foreground);
+  --ui-destructive: var(--destructive);
+  --ui-ring: color-mix(in oklch, var(--ring) 50%, transparent);
+  --ui-ring-border: var(--ring);
+  --ui-radius: var(--radius);
+  --ui-font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --ui-font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+/* ui-sdk underlines every link; keep app links styled by their own classes. */
+@layer components {
+  a:not([data-slot]) {
+    color: inherit;
+    text-decoration: inherit;
+  }
 }
 
 @layer base {
