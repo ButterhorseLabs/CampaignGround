@@ -61,6 +61,19 @@ describe("manual data entry", () => {
     expect(res.status).toBe(400);
   });
 
+  test("adding the same person at the same address twice is refused", async () => {
+    const voter = { campaignId, firstName: "Dupe", lastName: "Checker", registeredAddress: "9 Elm St" };
+    expect((await post(member.cookie, "/api/voters", voter)).status).toBe(200);
+
+    const again = await post(member.cookie, "/api/voters", { ...voter, firstName: "dupe", registeredAddress: "9 ELM ST" });
+    expect(again.status).toBe(409);
+    expect((await again.json()).error).toContain("already on your voter list");
+
+    // Same name at a different address is a different person.
+    const elsewhere = await post(member.cookie, "/api/voters", { ...voter, registeredAddress: "10 Elm St" });
+    expect(elsewhere.status).toBe(200);
+  });
+
   test("a voter can't be filed under another campaign's precinct", async () => {
     const other = await signupAndLogin();
     const precinct = await testDb.precinct.create({

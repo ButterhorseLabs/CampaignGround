@@ -13,6 +13,8 @@ export async function GET(req: NextRequest) {
   const party = sp.get("party"); // comma separated
   const precinctId = sp.get("precinctId");
   const contactedOnly = sp.get("contacted") === "1";
+  const sort = sp.get("sort") === "precinct" ? "precinct" : "name";
+  const dir = sp.get("dir") === "desc" ? "desc" : "asc";
   const pagination = parseQuery(sp, paginationSchema);
   if ("error" in pagination) return pagination.error;
   const { limit, offset } = pagination.data;
@@ -21,15 +23,16 @@ export async function GET(req: NextRequest) {
   if ("error" in access) return access.error;
 
   const where: Prisma.VoterWhereInput = { campaignId: access.campaignId };
+  const and: Prisma.VoterWhereInput[] = [];
   if (q) {
-    where.OR = [
+    and.push({ OR: [
       { firstName: { contains: q, mode: "insensitive" } },
       { lastName: { contains: q, mode: "insensitive" } },
       { email: { contains: q, mode: "insensitive" } },
       { phone: { contains: q, mode: "insensitive" } },
       { registeredAddress: { contains: q, mode: "insensitive" } },
       { notes: { contains: q, mode: "insensitive" } },
-    ];
+    ] });
   }
   if (support) {
     where.supportLevel = { in: support.split(",") };
@@ -41,16 +44,19 @@ export async function GET(req: NextRequest) {
     where.precinctId = precinctId;
   }
   if (contactedOnly) {
-    where.OR = [
+    and.push({ OR: [
       { callLogs: { some: { outcome: "contacted" } } },
       { canvassLogs: { some: { outcome: "contacted" } } },
-    ];
+    ] });
   }
+  if (and.length) where.AND = and;
+
+  const byName: Prisma.VoterOrderByWithRelationInput[] = [{ lastName: dir }, { firstName: dir }];
 
   const [voters, total] = await Promise.all([
     db.voter.findMany({
       where,
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      orderBy: sort === "precinct" ? [{ precinct: { name: dir } }, ...byName] : byName,
       take: limit,
       skip: offset,
       include: {
@@ -107,6 +113,24 @@ export async function POST(req: NextRequest) {
 
   const precinctErr = await assertBelongsToCampaign(db.precinct, precinctId, access.campaignId, "precinct");
   if (precinctErr) return precinctErr;
+
+  const duplicate = await db.voter.findFirst({
+    where: {
+      campaignId: access.campaignId,
+      firstName: { equals: fields.firstName, mode: "insensitive" },
+      lastName: { equals: fields.lastName, mode: "insensitive" },
+      registeredAddress: fields.registeredAddress
+        ? { equals: fields.registeredAddress, mode: "insensitive" }
+        : null,
+    },
+    select: { id: true },
+  });
+  if (duplicate) {
+    return NextResponse.json(
+      { error: `${fields.firstName} ${fields.lastName}${fields.registeredAddress ? " at this address" : ""} is already on your voter list.` },
+      { status: 409 }
+    );
+  }
 
   const voter = await db.voter.create({
     data: {

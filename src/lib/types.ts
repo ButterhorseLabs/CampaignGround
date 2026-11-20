@@ -236,3 +236,15 @@ export const SUPPORT_SOURCE_LABELS: Record<string, string> = {
   canvass: "canvass",
   call: "phone call",
 };
+
+/** Party codes stored on voters, with the words shown to people. Imported county codes outside this list display as stored. */
+export const PARTIES: { value: string; label: string }[] = [
+  { value: "Dem", label: "Democratic" },
+  { value: "Rep", label: "Republican" },
+  { value: "Ind", label: "Independent" },
+  { value: "Green", label: "Green" },
+  { value: "Lib", label: "Libertarian" },
+  { value: "NPP", label: "No party" },
+];
+
+export const partyLabel = (party: string) => PARTIES.find((p) => p.value === party)?.label ?? party;
