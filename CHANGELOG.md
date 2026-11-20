@@ -28,6 +28,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Walk lists now cover every door in a precinct, plus "No precinct", in
+  street order (street name, then house number as a number), one page at a
+  time (`GET /api/walk-lists`, `GET /api/walk-lists/doors`). They replace the
+  five-precinct preview of the first 200 voters.
 - Canvass claims now cover the whole household, renew every minute while a
   door is open, and release when the tab closes.
 - Members can only canvass, call, or hold claims as their own volunteer

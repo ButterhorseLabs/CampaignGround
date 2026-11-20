@@ -11,34 +11,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DoorOpen,
-  Home,
-  CheckCircle2,
-  MapPin,
-  Loader2,
-  ClipboardList,
-  Plus,
-} from "lucide-react";
+import { DoorOpen, Home, CheckCircle2, MapPin, Loader2, Plus } from "lucide-react";
 import { SupportBadge } from "@/components/common/badges";
 import { StatCard } from "@/components/common/stat-card";
 import { useState } from "react";
 import { toast } from "sonner";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Label } from "@/components/ui/label";
-import type { CanvassLog, Voter, Volunteer } from "@/lib/types";
+import type { CanvassLog, Volunteer } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { useClaims } from "@/lib/claims";
 import { ActingAsPicker } from "@/components/common/acting-as-picker";
 import { useVoters } from "@/lib/voters";
 import { useVolunteers } from "@/lib/volunteers";
 import { LogCanvassDialog, OUTCOME_INFO } from "@/components/canvass/log-canvass-dialog";
-
-interface VoterWithExtras extends Voter {
-  precinct?: { name: string } | null;
-  household?: { address: string } | null;
-}
+import { WalkListCard, type Door, type DoorVoter } from "@/components/canvass/walk-list-card";
 
 interface CanvassLogRow extends CanvassLog {
   household?: { address: string } | null;
@@ -52,7 +39,8 @@ export function CanvassView() {
   const [outcomeFilter, setOutcomeFilter] = useState("all");
   const [logOpen, setLogOpen] = useState(false);
   const [activeVolunteerId, setActiveVolunteerId] = useState("");
-  const [claimedVoterId, setClaimedVoterId] = useState<string | null>(null);
+  // The voter claimed from the walk list, and their door's voters for the log dialog.
+  const [claimed, setClaimed] = useState<{ voterId: string; doorVoters: DoorVoter[] } | null>(null);
   const campaignId = useApp((s) => s.currentCampaignId);
 
   const params = new URLSearchParams();
@@ -67,15 +55,16 @@ export function CanvassView() {
   });
   const logs: CanvassLogRow[] = logsData?.items ?? [];
 
-  const { data: votersData } = useVoters(campaignId, { limit: "200" }, { refetchInterval: 10_000 });
-  const voters: VoterWithExtras[] = votersData?.items ?? [];
+  // Voters to pick from when logging without claiming a door first.
+  const { data: votersData } = useVoters(campaignId, { limit: "200" });
+  const voters = votersData?.items ?? [];
 
   const { data: volunteersData } = useVolunteers(campaignId);
   const volunteers: Volunteer[] = volunteersData?.items ?? [];
 
   const { claimedByOthers, claim, release } = useClaims("canvass", campaignId, activeVolunteerId);
 
-  async function claimVoter(voter: VoterWithExtras) {
+  async function claimVoter(voter: DoorVoter, door: Door) {
     if (!activeVolunteerId) {
       toast.error("Select who's canvassing first");
       return;
@@ -87,26 +76,15 @@ export function CanvassView() {
       toast.error(`Already being knocked by ${body.claimedBy}`);
       return;
     }
-    setClaimedVoterId(voter.id);
+    setClaimed({ voterId: voter.id, doorVoters: door.voters });
     setLogOpen(true);
   }
 
   function releaseClaim() {
-    if (!claimedVoterId || !activeVolunteerId) return;
-    release(claimedVoterId, activeVolunteerId);
-    setClaimedVoterId(null);
+    if (!claimed || !activeVolunteerId) return;
+    release(claimed.voterId, activeVolunteerId);
+    setClaimed(null);
   }
-
-  // Build walk lists grouped by precinct (top 5 streets to knock)
-  const walkLists = (voters || [])
-    .filter((v) => v.supportLevel === "undecided" || v.supportLevel === "unknown" || v.supportLevel === "lean-support")
-    .reduce<Record<string, VoterWithExtras[]>>((acc, v) => {
-      const key = v.precinct?.name ?? "Unassigned";
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(v);
-      return acc;
-    }, {});
-  const walkListEntries = Object.entries(walkLists).sort((a, b) => b[1].length - a[1].length).slice(0, 5);
 
   // Summary
   const total = logs.length;
@@ -131,64 +109,7 @@ export function CanvassView() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Walk lists */}
-        <Card className="lg:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Walk Lists</CardTitle>
-            <CardDescription className="text-xs">Priority doors to knock this week</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {walkListEntries.map(([precinct, list]) => (
-                <div key={precinct} className="rounded-lg border p-3">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <div className="text-sm font-medium">{precinct}</div>
-                      <div className="text-[11px] text-muted-foreground">{list.length} priority doors</div>
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">
-                      <ClipboardList className="size-3 mr-1" />
-                      {list.filter((v) => v.supportLevel === "undecided").length} undecided
-                    </Badge>
-                  </div>
-                  <div className="mt-2 space-y-0.5">
-                    {list.slice(0, 4).map((v) => {
-                      const claimedBy = claimedByOthers.get(v.id);
-                      return (
-                        <button
-                          key={v.id}
-                          type="button"
-                          onClick={() => claimVoter(v)}
-                          disabled={!!claimedBy}
-                          className={cn(
-                            "flex w-full items-center gap-2 text-[11px] text-muted-foreground rounded px-1 -mx-1 py-0.5 text-left",
-                            claimedBy ? "opacity-50 cursor-not-allowed" : "hover:bg-accent/50"
-                          )}
-                        >
-                          <MapPin className="size-3" />
-                          <span className="flex-1 truncate">{v.household?.address ?? v.registeredAddress}</span>
-                          {claimedBy ? (
-                            <Badge variant="outline" className="text-[9px] py-0 h-4">Knocking: {claimedBy}</Badge>
-                          ) : (
-                            <SupportBadge level={v.supportLevel} />
-                          )}
-                        </button>
-                      );
-                    })}
-                    {list.length > 4 && (
-                      <div className="text-[11px] text-muted-foreground italic pt-1">
-                        + {list.length - 4} more
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {walkListEntries.length === 0 && (
-                <p className="text-sm text-muted-foreground">No walk lists available.</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <WalkListCard campaignId={campaignId} claimedByOthers={claimedByOthers} onClaim={claimVoter} />
 
         {/* Canvass log table */}
         <Card className="lg:col-span-2 overflow-hidden">
@@ -262,19 +183,20 @@ export function CanvassView() {
 
       {/* Log outcome dialog */}
       <LogCanvassDialog
-        key={claimedVoterId ?? "manual"}
+        key={claimed?.voterId ?? "manual"}
         open={logOpen}
         onOpenChange={(o) => {
           setLogOpen(o);
           if (!o) releaseClaim();
         }}
-        voters={voters}
+        voters={claimed?.doorVoters ?? voters}
         volunteers={volunteers}
-        defaultVoterId={claimedVoterId ?? undefined}
+        defaultVoterId={claimed?.voterId}
         volunteerId={activeVolunteerId}
         onSaved={() => {
           qc.invalidateQueries({ queryKey: ["canvass-logs"] });
           qc.invalidateQueries({ queryKey: ["voters"] });
+          qc.invalidateQueries({ queryKey: ["walk-lists"] });
           qc.invalidateQueries({ queryKey: ["dashboard"] });
           toast("Canvass outcome logged", { duration: 1500 });
           setLogOpen(false);
