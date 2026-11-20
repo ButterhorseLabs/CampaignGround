@@ -27,7 +27,7 @@ import { useSavingAction } from "@/lib/use-saving-action";
 import { PARTIES, SUPPORT_LEVELS } from "@/lib/types";
 
 const NONE = "none";
-export const field = "mt-1 h-11 sm:h-9";
+export const inputClass = "mt-1 h-11 sm:h-9";
 // SelectTrigger sets its height through data-size, so override that selector.
 const selectField = "mt-1 w-full data-[size=default]:h-11 sm:data-[size=default]:h-9";
 
@@ -153,16 +153,16 @@ export function AddVoterDialog({ open, onOpenChange, campaignId, precincts }: {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label htmlFor={`${id}-phone`} className="text-xs">Phone</Label>
-                <Input id={`${id}-phone`} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={field} autoComplete="off" />
+                <Input id={`${id}-phone`} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} autoComplete="off" />
               </div>
               <div>
                 <Label htmlFor={`${id}-email`} className="text-xs">Email</Label>
-                <Input id={`${id}-email`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={field} autoComplete="off" />
+                <Input id={`${id}-email`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="off" />
               </div>
             </div>
             <div>
               <Label htmlFor={`${id}-address`} className="text-xs">Street address</Label>
-              <Input id={`${id}-address`} value={address} onChange={(e) => setAddress(e.target.value)} className={field} placeholder="123 Main St" autoComplete="off" />
+              <Input id={`${id}-address`} value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} placeholder="123 Main St" autoComplete="off" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
@@ -231,7 +231,7 @@ export function NameField({ id, label, value, onChange, error, inputRef }: {
         ref={inputRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={field}
+        className={inputClass}
         autoComplete="off"
         required
         aria-invalid={error ? true : undefined}

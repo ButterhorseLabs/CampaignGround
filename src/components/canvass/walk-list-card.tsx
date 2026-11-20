@@ -11,11 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SupportBadge } from "@/components/common/badges";
 import { cn } from "@/lib/utils";
 import type { Voter } from "@/lib/types";
+import type { Door } from "@/lib/walk-list";
 
 const PAGE_SIZE = 25;
 
 interface WalkListSummary {
-  precinctId: string | null;
+  /** A precinct id, or NO_PRECINCT for voters without one. */
+  precinctId: string;
   name: string;
   voterCount: number;
 }
@@ -24,15 +26,9 @@ export type DoorVoter = Pick<Voter, "id" | "firstName" | "lastName" | "supportLe
   household: { address: string } | null;
 };
 
-export interface Door {
-  id: string;
-  address: string | null;
-  voters: DoorVoter[];
-}
-
 interface ClaimProps {
   claimedByOthers: Map<string, string>;
-  onClaim: (voter: DoorVoter, door: Door) => void;
+  onClaim: (voter: DoorVoter, door: Door<DoorVoter>) => void;
 }
 
 const loading = (
@@ -48,10 +44,9 @@ export function WalkListCard({ campaignId, ...claimProps }: ClaimProps & { campa
       (await fetch(`/api/walk-lists?campaignId=${campaignId}`)).json(),
     enabled: !!campaignId,
   });
-  // The API's precinctId "none" is the "No precinct" walk list.
-  const lists = (data?.items ?? []).map((l) => ({ ...l, key: l.precinctId ?? "none" }));
+  const lists = data?.items ?? [];
   // Show the first list until the canvasser picks one, or if the picked one empties out.
-  const precinct = lists.find((l) => l.key === picked)?.key ?? lists[0]?.key;
+  const precinct = lists.find((l) => l.precinctId === picked)?.precinctId ?? lists[0]?.precinctId;
 
   return (
     <Card className="lg:col-span-1 gap-0 py-0 overflow-hidden">
@@ -67,7 +62,7 @@ export function WalkListCard({ campaignId, ...claimProps }: ClaimProps & { campa
               </SelectTrigger>
               <SelectContent>
                 {lists.map((l) => (
-                  <SelectItem key={l.key} value={l.key}>
+                  <SelectItem key={l.precinctId} value={l.precinctId}>
                     {l.name} · {l.voterCount.toLocaleString()} {l.voterCount === 1 ? "voter" : "voters"}
                   </SelectItem>
                 ))}
@@ -97,7 +92,7 @@ function WalkListDoors({ campaignId, precinct, claimedByOthers, onClaim }: Claim
   const [page, setPage] = useState(0);
   const { data, isPlaceholderData } = useQuery({
     queryKey: ["walk-lists", campaignId, precinct, page],
-    queryFn: async (): Promise<{ items: Door[]; total: number }> => {
+    queryFn: async (): Promise<{ items: Door<DoorVoter>[]; total: number }> => {
       const params = new URLSearchParams({
         campaignId,
         precinctId: precinct,
@@ -118,23 +113,23 @@ function WalkListDoors({ campaignId, precinct, claimedByOthers, onClaim }: Claim
       <ul className={cn("max-h-[560px] overflow-y-auto scroll-area-thin border-t transition-opacity", isPlaceholderData && "opacity-60")}>
         {doors.map((door) => {
           // A claim covers the whole door, so any claimed housemate marks it.
-          const knocking = door.voters.map((v) => claimedByOthers.get(v.id)).find(Boolean);
+          const claimedBy = door.voters.map((v) => claimedByOthers.get(v.id)).find(Boolean);
           return (
             <li key={door.id} className="border-b last:border-b-0 px-4 py-2">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <MapPin className="size-3.5 text-muted-foreground flex-shrink-0" aria-hidden />
                 <span className="flex-1 truncate">{door.address ?? "No address"}</span>
-                {knocking && <Badge variant="outline" className="text-[10px] py-0 h-5">Knocking: {knocking}</Badge>}
+                {claimedBy && <Badge variant="outline" className="text-[10px] py-0 h-5">Claimed by {claimedBy}</Badge>}
               </div>
               {door.voters.map((v) => (
                 <button
                   key={v.id}
                   type="button"
                   onClick={() => onClaim(v, door)}
-                  disabled={!!knocking}
+                  disabled={!!claimedBy}
                   className={cn(
                     "flex w-full min-h-11 items-center gap-2 rounded-md px-2 text-left text-sm",
-                    knocking ? "opacity-50 cursor-not-allowed" : "hover:bg-accent/50"
+                    claimedBy ? "opacity-50 cursor-not-allowed" : "hover:bg-accent/50"
                   )}
                 >
                   <span className="flex-1 truncate">{v.firstName} {v.lastName}</span>

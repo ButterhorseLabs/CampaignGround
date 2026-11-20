@@ -48,9 +48,9 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
   voters: { title: "Voters", subtitle: "Registered voter database with support tracking" },
   volunteers: { title: "Volunteers", subtitle: "Canvassers, phone-bankers, and team leads" },
   donors: { title: "Donors", subtitle: "Contributions, compliance, and fundraising goals" },
-  canvass: { title: "Canvassing", subtitle: "Door-knock walk lists and contact outcomes" },
+  canvass: { title: "Canvassing", subtitle: "Walk lists and contact attempts at the door" },
   phonebank: { title: "Phone Bank", subtitle: "Call queue, scripts, and outcome tracking" },
-  events: { title: "Events", subtitle: "Town halls, knock-kickoffs, and rallies" },
+  events: { title: "Events", subtitle: "Town halls, canvass kickoffs, and rallies" },
   tasks: { title: "Tasks", subtitle: "Coordinator workflow and team assignments" },
 };
 

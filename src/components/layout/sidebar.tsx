@@ -42,7 +42,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "Outreach",
     items: [
-      { id: "canvass", label: "Canvassing", icon: DoorOpen, hint: "Door knocks" },
+      { id: "canvass", label: "Canvassing", icon: DoorOpen, hint: "Walk lists" },
       { id: "phonebank", label: "Phone Bank", icon: PhoneCall },
     ],
   },

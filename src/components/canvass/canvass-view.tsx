@@ -25,7 +25,8 @@ import { ActingAsPicker } from "@/components/common/acting-as-picker";
 import { useVoters } from "@/lib/voters";
 import { useVolunteers } from "@/lib/volunteers";
 import { LogCanvassDialog, OUTCOME_INFO } from "@/components/canvass/log-canvass-dialog";
-import { WalkListCard, type Door, type DoorVoter } from "@/components/canvass/walk-list-card";
+import { WalkListCard, type DoorVoter } from "@/components/canvass/walk-list-card";
+import type { Door } from "@/lib/walk-list";
 
 interface CanvassLogRow extends CanvassLog {
   household?: { address: string } | null;
@@ -64,7 +65,7 @@ export function CanvassView() {
 
   const { claimedByOthers, claim, release } = useClaims("canvass", campaignId, activeVolunteerId);
 
-  async function claimVoter(voter: DoorVoter, door: Door) {
+  async function claimVoter(voter: DoorVoter, door: Door<DoorVoter>) {
     if (!activeVolunteerId) {
       toast.error("Select who's canvassing first");
       return;
@@ -73,7 +74,7 @@ export function CanvassView() {
     const r = await claim(voter.id, activeVolunteerId);
     if (r.status === 409) {
       const body = await r.json();
-      toast.error(`Already being knocked by ${body.claimedBy}`);
+      toast.error(`Already claimed by ${body.claimedBy}`);
       return;
     }
     setClaimed({ voterId: voter.id, doorVoters: door.voters });
@@ -102,7 +103,7 @@ export function CanvassView() {
 
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon={DoorOpen} label="Doors knocked" value={doors} sub={`${total} contact attempts`} accent="violet" />
+        <StatCard icon={DoorOpen} label="Doors visited" value={doors} sub={`${total} contact attempts`} accent="violet" />
         <StatCard icon={CheckCircle2} label="Contact rate" value={`${contactRate.toFixed(0)}%`} sub={`${contacted} contacts`} accent="emerald" />
         <StatCard icon={Home} label="Not home" value={notHome} sub="Try again later" accent="amber" />
         <StatCard icon={MapPin} label="Yard signs placed" value={yardSigns} sub="Via canvass" accent="rose" />
@@ -116,7 +117,7 @@ export function CanvassView() {
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-base">Canvass Activity Log</CardTitle>
-              <CardDescription className="text-xs">Recent door-knock outcomes</CardDescription>
+              <CardDescription className="text-xs">Recent contact attempts at the door</CardDescription>
             </div>
             <div className="flex gap-2">
               <Select value={outcomeFilter} onValueChange={setOutcomeFilter}>

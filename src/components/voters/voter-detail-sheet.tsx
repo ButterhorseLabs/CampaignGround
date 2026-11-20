@@ -30,7 +30,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { NameField, field } from "@/components/voters/add-voter-dialog";
+import { NameField, inputClass } from "@/components/voters/add-voter-dialog";
+import { useSavingAction } from "@/lib/use-saving-action";
 
 interface VoterRow extends Voter {
   precinct?: { name: string; code: string } | null;
@@ -40,8 +41,16 @@ interface VoterRow extends Voter {
 
 const sectionLabel = "text-[11px] uppercase tracking-wider text-muted-foreground";
 
-/** Resolves to the error to show, or null once done. */
-type SaveResult = Promise<string | null>;
+/** Resolves to the API response; the sheet shows the error of a failed one. */
+export type SaveResult = Promise<Response>;
+
+const SAVE_FAILED = "Couldn't save that change. Check your connection and try again.";
+
+/** The error the API sent with a failed response, or `fallback` when it sent none. */
+async function errorFrom(r: Response, fallback: string): Promise<string> {
+  const body = await r.json().catch(() => null);
+  return body?.error ?? fallback;
+}
 
 export function VoterDetailSheet({
   voter,
@@ -82,8 +91,8 @@ function VoterDetailForm({
   const hasHistory = (voter._count?.callLogs ?? 0) + (voter._count?.canvassLogs ?? 0) > 0;
 
   async function update(patch: Partial<Voter>) {
-    const error = await onUpdate(voter.id, patch);
-    if (error) toast.error(error);
+    const r = await onUpdate(voter.id, patch);
+    if (!r.ok) toast.error(await errorFrom(r, SAVE_FAILED));
   }
 
   function closeEditor() {
@@ -233,7 +242,7 @@ function VoterDetailForm({
                 <dd className="tabular-nums">{voter._count?.callLogs ?? 0}</dd>
               </div>
               <div className="flex justify-between">
-                <dt>Door knocks</dt>
+                <dt>Door visits</dt>
                 <dd className="tabular-nums">{voter._count?.canvassLogs ?? 0}</dd>
               </div>
             </dl>
@@ -244,7 +253,7 @@ function VoterDetailForm({
           <div className="border-t pt-4">
             {hasHistory ? (
               <p className="text-xs text-muted-foreground">
-                Voters with call or door-knock history can't be deleted, so your outreach counts stay accurate. Correct their details instead.
+                Voters with contact attempts can't be deleted, so your outreach counts stay accurate. Correct their details instead.
               </p>
             ) : (
               <DeleteVoter voter={voter} onDelete={onDelete} />
@@ -283,7 +292,7 @@ function ContactEditor({
   const [email, setEmail] = useState(voter.email ?? "");
   const [address, setAddress] = useState(voter.registeredAddress ?? "");
   const [errors, setErrors] = useState<{ first?: string; last?: string; form?: string }>({});
-  const [saving, setSaving] = useState(false);
+  const { saving, run } = useSavingAction();
 
   // The Edit button that had focus is gone; start the keyboard at the first field.
   useEffect(() => firstRef.current?.focus(), []);
@@ -299,11 +308,10 @@ function ContactEditor({
       (missing.first ? firstRef : lastRef).current?.focus();
       return;
     }
-    setSaving(true);
-    const error = await onSave({ firstName, lastName, phone, email, registeredAddress: address });
-    setSaving(false);
-    if (error) setErrors({ form: error });
-    else onClose();
+    await run(() => onSave({ firstName, lastName, phone, email, registeredAddress: address }), {
+      onSuccess: onClose,
+      onError: async (r) => setErrors({ form: await errorFrom(r, SAVE_FAILED) }),
+    });
   }
 
   return (
@@ -315,15 +323,15 @@ function ContactEditor({
       </div>
       <div>
         <Label htmlFor={`${id}-phone`} className="text-xs">Phone</Label>
-        <Input id={`${id}-phone`} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={field} autoComplete="off" />
+        <Input id={`${id}-phone`} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} autoComplete="off" />
       </div>
       <div>
         <Label htmlFor={`${id}-email`} className="text-xs">Email</Label>
-        <Input id={`${id}-email`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={field} autoComplete="off" />
+        <Input id={`${id}-email`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="off" />
       </div>
       <div>
         <Label htmlFor={`${id}-address`} className="text-xs">Street address</Label>
-        <Input id={`${id}-address`} value={address} onChange={(e) => setAddress(e.target.value)} className={field} placeholder="123 Main St" autoComplete="off" />
+        <Input id={`${id}-address`} value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} placeholder="123 Main St" autoComplete="off" />
       </div>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" className="h-11 sm:h-9" onClick={onClose}>Cancel</Button>
@@ -338,15 +346,14 @@ function ContactEditor({
 
 function DeleteVoter({ voter, onDelete }: { voter: Voter; onDelete: (voter: Voter) => SaveResult }) {
   const [error, setError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const { saving: deleting, run } = useSavingAction();
   const name = `${voter.firstName} ${voter.lastName}`;
 
   async function confirm() {
-    setDeleting(true);
     // On success the sheet closes and this unmounts.
-    const result = await onDelete(voter);
-    setDeleting(false);
-    setError(result);
+    await run(() => onDelete(voter), {
+      onError: async (r) => setError(await errorFrom(r, "Couldn't delete this voter. Check your connection and try again.")),
+    });
   }
 
   return (

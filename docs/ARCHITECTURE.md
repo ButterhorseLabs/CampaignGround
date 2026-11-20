@@ -35,7 +35,7 @@ Every campaign-scoped model carries a `campaignId`; nothing is queried without g
 
 ## Onboarding
 
-- **Self-service signup** (`POST /api/signup`, `src/app/signup/page.tsx`): open to anyone, rate-limited, optional `MAX_USERS` cap. Creates a `User`, a **blank** `Campaign` (no demo data), and an `owner` `CampaignMembership` in one transaction.
+- **Self-service signup** (`POST /api/signup`, `src/app/signup/page.tsx`): open to anyone, rate-limited, optional `MAX_USERS` cap. Creates a `User`, a **blank** `Campaign` (no demo data), an `owner` `CampaignMembership`, and the owner's own `Volunteer` entry (linked by `userId`, via `linkOwnVolunteer` in `src/lib/own-volunteer.ts`) in one transaction, so the owner can canvass and call as themselves straight away.
 - **First-run bootstrap** (`GET /api/seed`): fires only when zero `User` rows exist. Seeds a fully-populated demo campaign (280 voters, volunteers, donors, events, canvass/call logs) plus one admin user — this is how a fresh deployment gets its first login.
 - **Team invites** (`POST /api/invites`, accepted via `/invite/[token]`): a campaign `owner` invites a teammate by email. Sends through Postmark (`src/lib/email.ts`); without `POSTMARK_SERVER_TOKEN` configured, the invite link is logged to the console instead (dev convenience). Accepting works whether the invitee already has an account (just adds a `CampaignMembership`) or not (creates the `User` too). Bounces are tracked via a Postmark webhook (`POST /api/webhooks/postmark/bounce`, Basic Auth) and automatically un-suppressed on resend via `reactivateBounce()`.
 

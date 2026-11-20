@@ -12,17 +12,18 @@ let victimCampaignId: string;
 let victimVoterId: string;
 let victimDonorId: string;
 let victimVolunteerId: string;
+let victimOwner: TestAccount;
 let attacker: TestAccount;
 
 describe("cross-campaign IDOR protection", () => {
   beforeAll(async () => {
-    const owner = await signupAndLogin();
-    victimCampaignId = await seedDemoCampaign(owner.cookie);
+    victimOwner = await signupAndLogin();
+    victimCampaignId = await seedDemoCampaign(victimOwner.cookie);
 
     const [voter, donor, volunteer] = await Promise.all([
-      fetchAs(owner.cookie, `/api/voters?campaignId=${victimCampaignId}&limit=1`).then((r) => r.json()),
-      fetchAs(owner.cookie, `/api/donors?campaignId=${victimCampaignId}`).then((r) => r.json()),
-      fetchAs(owner.cookie, `/api/volunteers?campaignId=${victimCampaignId}`).then((r) => r.json()),
+      fetchAs(victimOwner.cookie, `/api/voters?campaignId=${victimCampaignId}&limit=1`).then((r) => r.json()),
+      fetchAs(victimOwner.cookie, `/api/donors?campaignId=${victimCampaignId}`).then((r) => r.json()),
+      fetchAs(victimOwner.cookie, `/api/volunteers?campaignId=${victimCampaignId}`).then((r) => r.json()),
     ]);
     victimVoterId = voter.items[0].id;
     victimDonorId = donor.items[0].id;
@@ -115,6 +116,27 @@ describe("cross-campaign IDOR protection", () => {
     const res = await fetchAs(attacker.cookie, `/api/donations?campaignId=${victimCampaignId}`);
 
     expect(res.status).toBe(403);
+  });
+
+  test("DELETE /api/voters rejects a voter id from another campaign, and the voter survives", async () => {
+    // A fresh voter with no contact attempts, which its own owner could delete.
+    const created = await fetchAs(victimOwner.cookie, "/api/voters", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaignId: victimCampaignId, firstName: "Kept", lastName: "Safe" }),
+    });
+    expect(created.status).toBe(200);
+    const { id } = await created.json();
+
+    const res = await fetchAs(attacker.cookie, "/api/voters", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+
+    expect(res.status).toBe(403);
+    const list = await fetchAs(victimOwner.cookie, `/api/voters?campaignId=${victimCampaignId}&q=Safe`).then((r) => r.json());
+    expect(list.items.map((v: { id: string }) => v.id)).toContain(id);
   });
 });
 
