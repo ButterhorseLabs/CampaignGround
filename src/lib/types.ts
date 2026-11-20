@@ -93,7 +93,6 @@ export interface Donation {
   campaignId: string;
   donorId: string;
   donor?: Donor;
-  voterId?: string | null;
   createdAt: string;
 }
 

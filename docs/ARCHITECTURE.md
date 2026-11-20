@@ -14,7 +14,7 @@ There is **no Next.js file-based routing per module**. `src/app/page.tsx` render
 User ── CampaignMembership (role: owner | member) ── Campaign
                                                         ├─ Precinct ── Household ── Voter ── Donor (0/1)
                                                         ├─ Volunteer
-                                                        ├─ Donation (Donor × Voter)      [owner-only]
+                                                        ├─ Donation (from a Donor)       [owner-only]
                                                         ├─ Event ── EventAttendee (Voter | Volunteer)
                                                         ├─ Task (assignable to Volunteer or Voter)
                                                         ├─ CanvassLog (door-knock outcome)
