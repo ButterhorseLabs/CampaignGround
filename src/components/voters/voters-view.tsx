@@ -135,20 +135,41 @@ export function VotersView() {
     setPage(0);
   }
 
-  async function updateVoter(id: string, patch: Partial<Voter>) {
+  /** Resolves to the error to show, or null once saved. */
+  async function updateVoter(id: string, patch: Partial<Voter>): Promise<string | null> {
     const r = await fetch("/api/voters", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, ...patch }),
     }).catch(() => null);
     if (!r?.ok) {
-      toast.error("Couldn't save that change. Check your connection and try again.");
-      return;
+      const body = await r?.json().catch(() => null);
+      return body?.error ?? "Couldn't save that change. Check your connection and try again.";
     }
+    const updated: Voter = await r.json();
     toast("Voter updated", { duration: 1500 });
     qc.invalidateQueries({ queryKey: ["voters"] });
     qc.invalidateQueries({ queryKey: ["dashboard"] });
-    if (selected?.id === id) setSelected({ ...selected, ...patch });
+    // A new street address can take the voter out of their household.
+    setSelected((s) => (s?.id === id ? { ...s, ...updated, household: updated.householdId ? s.household : null } : s));
+    return null;
+  }
+
+  async function deleteVoter(voter: Voter): Promise<string | null> {
+    const r = await fetch("/api/voters", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: voter.id }),
+    }).catch(() => null);
+    if (!r?.ok) {
+      const body = await r?.json().catch(() => null);
+      return body?.error ?? "Couldn't delete this voter. Check your connection and try again.";
+    }
+    toast(`Deleted ${voter.firstName} ${voter.lastName}`, { duration: 1500 });
+    qc.invalidateQueries({ queryKey: ["voters"] });
+    qc.invalidateQueries({ queryKey: ["dashboard"] });
+    setSelected(null);
+    return null;
   }
 
   const dialogs = (
@@ -456,7 +477,12 @@ export function VotersView() {
         )}
       </Card>
 
-      <VoterDetailSheet voter={selected} onClose={() => setSelected(null)} onUpdate={updateVoter} />
+      <VoterDetailSheet
+        voter={selected}
+        onClose={() => setSelected(null)}
+        onUpdate={updateVoter}
+        onDelete={isOwner ? deleteVoter : undefined}
+      />
       {dialogs}
     </div>
   );
