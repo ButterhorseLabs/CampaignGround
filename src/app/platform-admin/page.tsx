@@ -7,6 +7,7 @@ import { useIsPlatformOwner } from "@/lib/memberships";
 import { toast } from "sonner";
 import { useSavingAction } from "@/lib/use-saving-action";
 import { formatDate } from "@/lib/format";
+import { FUNNEL_STEPS, type FunnelRow, type FunnelStep, type FunnelSummary } from "@/lib/activation-funnel";
 import {
   Card,
   CardContent,
@@ -121,6 +122,8 @@ function PlatformAdminContent() {
         </p>
       </div>
 
+      <ActivationFunnelCard />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Campaigns</CardTitle>
@@ -210,6 +213,98 @@ function PlatformAdminContent() {
 
       <TransferOwnershipCard />
     </div>
+  );
+}
+
+const STEP_LABELS: Record<FunnelStep, string> = {
+  signedUpAt: "Signed up",
+  firstVoterAt: "Voters added",
+  firstVolunteerAt: "Volunteer added",
+  firstInviteAt: "Invite sent",
+  activatedAt: "Activated",
+};
+
+function formatDuration(ms: number): string {
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} h`;
+  return `${Math.round(hours / 24)} days`;
+}
+
+// Where new campaigns stall between signup and their first contact attempt.
+// Setup progress only, never the contents of a campaign's records.
+function ActivationFunnelCard() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["platform", "funnel"],
+    queryFn: async (): Promise<{ summary: FunnelSummary; items: FunnelRow[] }> =>
+      (await fetch("/api/platform/funnel")).json(),
+  });
+  const summary = data?.summary;
+  const rows = data?.items ?? [];
+  const median = summary?.medianSignupToActivationMs ?? null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Activation funnel</CardTitle>
+        <CardDescription>
+          How far each campaign has got with setup. A campaign is activated once someone logs a
+          contact attempt.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {FUNNEL_STEPS.map((step) => (
+            <div key={step} className="rounded-lg border p-3">
+              <dt className="text-xs text-muted-foreground">{STEP_LABELS[step]}</dt>
+              <dd className="text-lg font-semibold tabular-nums">{summary?.reached[step] ?? "—"}</dd>
+            </div>
+          ))}
+          <div className="rounded-lg border p-3">
+            <dt className="text-xs text-muted-foreground">Median signup to activation</dt>
+            <dd className="text-lg font-semibold tabular-nums">
+              {median === null ? "—" : formatDuration(median)}
+            </dd>
+          </div>
+        </dl>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Campaign</TableHead>
+              <TableHead>Team size</TableHead>
+              {FUNNEL_STEPS.map((step) => (
+                <TableHead key={step}>{STEP_LABELS[step]}</TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={FUNNEL_STEPS.length + 2} className="text-center text-muted-foreground">
+                  Loading…
+                </TableCell>
+              </TableRow>
+            ) : (
+              rows.map((r) => (
+                <TableRow key={r.campaignId}>
+                  <TableCell className="font-medium">{r.campaignName}</TableCell>
+                  <TableCell className="tabular-nums">{r.teamSize}</TableCell>
+                  {FUNNEL_STEPS.map((step) => {
+                    const at = r[step];
+                    return (
+                      <TableCell key={step} className="tabular-nums whitespace-nowrap">
+                        {at ? formatDate(at, { hour: "numeric", minute: "2-digit" }) : "—"}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }
 
