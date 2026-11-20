@@ -46,13 +46,13 @@ beforeAll(async () => {
 });
 
 describe("GET /api/walk-lists", () => {
-  test("lists every precinct with voters, plus No precinct", async () => {
+  test("lists every precinct with voters, plus No precinct under the id its doors are fetched by", async () => {
     const res = await fetchAs(owner.cookie, `/api/walk-lists?campaignId=${campaignId}`);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.items).toEqual([
       { precinctId, name: "North 1", voterCount: 4 },
-      { precinctId: null, name: "No precinct", voterCount: 1 },
+      { precinctId: "none", name: "No precinct", voterCount: 1 },
     ]);
   });
 

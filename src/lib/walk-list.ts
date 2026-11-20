@@ -18,6 +18,9 @@ export function parseAddress(address: string | null | undefined): ParsedAddress 
   return { number: Number(match[1]), street };
 }
 
+/** The precinctId of the "No precinct" walk list: voters without a precinct. */
+export const NO_PRECINCT = "none";
+
 export interface WalkListVoterInput {
   id: string;
   householdId: string | null;
@@ -25,27 +28,27 @@ export interface WalkListVoterInput {
   registeredAddress: string | null;
 }
 
-export interface Door<V extends WalkListVoterInput> {
+export interface Door<V> {
   /** The household id, or the voter id for a voter without a household. */
   id: string;
   address: string | null;
   voters: V[];
 }
 
-const text = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
+const addressCollator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
 
 function compareDoors(a: { address: string | null; parsed: ParsedAddress | null }, b: typeof a) {
   if (a.parsed && b.parsed) {
     return (
-      text.compare(a.parsed.street, b.parsed.street) ||
+      addressCollator.compare(a.parsed.street, b.parsed.street) ||
       a.parsed.number - b.parsed.number ||
-      text.compare(a.address ?? "", b.address ?? "")
+      addressCollator.compare(a.address ?? "", b.address ?? "")
     );
   }
   if (a.parsed || b.parsed) return a.parsed ? -1 : 1;
   if (a.address === null) return b.address === null ? 0 : 1;
   if (b.address === null) return -1;
-  return text.compare(a.address, b.address);
+  return addressCollator.compare(a.address, b.address);
 }
 
 /** Groups voters into doors and returns them in walking order. */
