@@ -34,6 +34,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   entry; owners can still act for anyone.
 - Members no longer receive donation counts or fundraising totals from the
   voters and dashboard APIs.
+- Donations no longer carry their own voter link; a donation's voter is its
+  donor's voter, and a voter's donation count comes through that donor. The
+  migration moves a donation's voter onto its donor when the donor had none.
 - Landing page, auth pages, and app shell redesigned against `DESIGN.md`.
 
 ## [1.0.0-rc.1] - 2026-07-02

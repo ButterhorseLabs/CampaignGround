@@ -288,7 +288,6 @@ async function loadFundraising(campaignId: string, goalCents: number): Promise<N
             updatedAt: d.donor.updatedAt.toISOString(),
           }
         : undefined,
-      voterId: d.voterId,
       createdAt: d.createdAt.toISOString(),
     })),
   };

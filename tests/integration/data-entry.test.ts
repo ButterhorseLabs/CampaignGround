@@ -205,4 +205,21 @@ describe("donor privacy", () => {
     expect(asOwner.fundraising.donors).toBe(1);
     expect(asOwner.totals.teammates).toBe(2);
   });
+
+  test("a voter's donation count comes from the donor linked to that voter", async () => {
+    const voter = await testDb.voter.findFirstOrThrow({ where: { campaignId, lastName: "Member-Added" } });
+    const donor = await testDb.donor.findFirstOrThrow({ where: { campaignId, lastName: "Giver" } });
+    // No API route links a donor to a voter yet; set the link directly.
+    await testDb.donor.update({ where: { id: donor.id }, data: { voterId: voter.id } });
+    for (const amountCents of [2500, 5000]) {
+      const res = await post(owner.cookie, "/api/donations", { campaignId, donorId: donor.id, amountCents });
+      expect(res.status).toBe(200);
+    }
+
+    const list = await (await fetchAs(owner.cookie, `/api/voters?campaignId=${campaignId}&limit=200`)).json();
+    const linked = list.items.find((v: { id: string }) => v.id === voter.id);
+    expect(linked._count.donations).toBe(2);
+    const others = list.items.filter((v: { id: string }) => v.id !== voter.id);
+    for (const v of others) expect(v._count.donations).toBe(0);
+  });
 });
