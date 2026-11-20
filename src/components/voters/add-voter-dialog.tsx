@@ -27,7 +27,7 @@ import { useSavingAction } from "@/lib/use-saving-action";
 import { PARTIES, SUPPORT_LEVELS } from "@/lib/types";
 
 const NONE = "none";
-const field = "mt-1 h-11 sm:h-9";
+export const field = "mt-1 h-11 sm:h-9";
 // SelectTrigger sets its height through data-size, so override that selector.
 const selectField = "mt-1 w-full data-[size=default]:h-11 sm:data-[size=default]:h-9";
 
@@ -213,7 +213,7 @@ export function AddVoterDialog({ open, onOpenChange, campaignId, precincts }: {
   );
 }
 
-function NameField({ id, label, value, onChange, error, inputRef }: {
+export function NameField({ id, label, value, onChange, error, inputRef }: {
   id: string;
   label: string;
   value: string;

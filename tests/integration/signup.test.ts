@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { fetchAs, login, signupAndLogin, uniqueEmail } from "../helpers/client";
 import { TEST_BASE_URL } from "../setup";
+import { testDb } from "../helpers/testDb";
 
 describe("POST /api/signup", () => {
   test("creates a new account with a blank campaign", async () => {
@@ -18,6 +19,28 @@ describe("POST /api/signup", () => {
     const votersRes = await fetchAs(account.cookie, `/api/voters?campaignId=${account.campaignId}`);
     const voters = await votersRes.json();
     expect(voters.total).toBe(0);
+  });
+
+  test("puts the owner on the volunteer roster, linked to their login", async () => {
+    const account = await signupAndLogin({ name: "Rosa Maria Diaz" });
+    const user = await testDb.user.findUniqueOrThrow({ where: { email: account.email } });
+
+    const list = await (await fetchAs(account.cookie, `/api/volunteers?campaignId=${account.campaignId}`)).json();
+    expect(list.items).toHaveLength(1);
+    const [own] = list.items;
+    expect(own.userId).toBe(user.id);
+    expect(own.firstName).toBe("Rosa");
+    expect(own.lastName).toBe("Maria Diaz");
+    expect(own.email).toBe(account.email);
+
+    // Linking again (the "Add yourself" path) returns the same entry, never a second one.
+    const again = await fetchAs(account.cookie, "/api/volunteers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaignId: account.campaignId, self: true }),
+    });
+    expect((await again.json()).id).toBe(own.id);
+    expect(await testDb.volunteer.count({ where: { campaignId: account.campaignId } })).toBe(1);
   });
 
   test("rejects a duplicate email with 409", async () => {

@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Activation funnel on the platform admin page (`GET /api/platform/funnel`,
+  platform owner only): per campaign, when it signed up, first added
+  voters, added a volunteer besides the owner, sent an invite, and logged a
+  first contact attempt, with step counts and the median time from signup
+  to activation. Shows setup progress only, never record contents.
 - Voter list import: upload a CSV, check the detected column mapping, and
   import. Precincts and households are created from the file and duplicates
   are skipped (`POST /api/voters/import`, owners only).
@@ -23,12 +28,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Walk lists now cover every door in a precinct, plus "No precinct", in
+  street order (street name, then house number as a number), one page at a
+  time (`GET /api/walk-lists`, `GET /api/walk-lists/doors`). They replace the
+  five-precinct preview of the first 200 voters.
 - Canvass claims now cover the whole household, renew every minute while a
   door is open, and release when the tab closes.
 - Members can only canvass, call, or hold claims as their own volunteer
   entry; owners can still act for anyone.
 - Members no longer receive donation counts or fundraising totals from the
   voters and dashboard APIs.
+- Donations no longer carry their own voter link; a donation's voter is its
+  donor's voter, and a voter's donation count comes through that donor. The
+  migration moves a donation's voter onto its donor when the donor had none.
 - Landing page, auth pages, and app shell redesigned against `DESIGN.md`.
 
 ## [1.0.0-rc.1] - 2026-07-02

@@ -205,4 +205,138 @@ describe("donor privacy", () => {
     expect(asOwner.fundraising.donors).toBe(1);
     expect(asOwner.totals.teammates).toBe(2);
   });
+
+  test("a voter's donation count comes from the donor linked to that voter", async () => {
+    const voter = await testDb.voter.findFirstOrThrow({ where: { campaignId, lastName: "Member-Added" } });
+    const donor = await testDb.donor.findFirstOrThrow({ where: { campaignId, lastName: "Giver" } });
+    // No API route links a donor to a voter yet; set the link directly.
+    await testDb.donor.update({ where: { id: donor.id }, data: { voterId: voter.id } });
+    for (const amountCents of [2500, 5000]) {
+      const res = await post(owner.cookie, "/api/donations", { campaignId, donorId: donor.id, amountCents });
+      expect(res.status).toBe(200);
+    }
+
+    const list = await (await fetchAs(owner.cookie, `/api/voters?campaignId=${campaignId}&limit=200`)).json();
+    const linked = list.items.find((v: { id: string }) => v.id === voter.id);
+    expect(linked._count.donations).toBe(2);
+    const others = list.items.filter((v: { id: string }) => v.id !== voter.id);
+    for (const v of others) expect(v._count.donations).toBe(0);
+  });
+});
+
+describe("correcting and deleting a voter", () => {
+  function send(cookie: string, method: "PATCH" | "DELETE", body: unknown) {
+    return fetchAs(cookie, "/api/voters", {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  async function addVoter(fields: Record<string, string>) {
+    const res = await post(owner.cookie, "/api/voters", { campaignId, ...fields });
+    expect(res.status).toBe(200);
+    return (await res.json()) as { id: string };
+  }
+
+  async function findVoter(q: string) {
+    const list = await (await fetchAs(owner.cookie, `/api/voters?campaignId=${campaignId}&q=${encodeURIComponent(q)}`)).json();
+    return list.items as Array<Record<string, unknown>>;
+  }
+
+  test("a member can correct a voter's name, phone, email and address", async () => {
+    const voter = await addVoter({ firstName: "Jon", lastName: "Typo", phone: "555-0000", registeredAddress: "4 Pine St" });
+
+    const res = await send(member.cookie, "PATCH", {
+      id: voter.id,
+      firstName: "John",
+      lastName: "Corrected",
+      phone: "555-0199",
+      email: "john@example.com",
+      registeredAddress: "44 Pine St",
+    });
+    expect(res.status).toBe(200);
+
+    const [found] = await findVoter("Corrected");
+    expect(found).toMatchObject({
+      id: voter.id,
+      firstName: "John",
+      lastName: "Corrected",
+      phone: "555-0199",
+      email: "john@example.com",
+      registeredAddress: "44 Pine St",
+    });
+
+    // Clearing an optional field stores nothing rather than an empty string.
+    expect((await send(member.cookie, "PATCH", { id: voter.id, email: "" })).status).toBe(200);
+    expect((await findVoter("Corrected"))[0].email).toBeNull();
+  });
+
+  test("a voter's name can't be blanked", async () => {
+    const voter = await addVoter({ firstName: "Nora", lastName: "Named" });
+    expect((await send(member.cookie, "PATCH", { id: voter.id, firstName: "  " })).status).toBe(400);
+    expect((await send(member.cookie, "PATCH", { id: voter.id, lastName: "" })).status).toBe(400);
+    expect((await findVoter("Named"))[0].firstName).toBe("Nora");
+  });
+
+  test("moving an imported voter to a new street address takes them out of their old household", async () => {
+    const imported = await post(owner.cookie, "/api/voters/import", {
+      campaignId,
+      rows: [{ firstName: "Hal", lastName: "Mover", address: "7 Old Rd", zip: "97001" }],
+    });
+    expect(imported.status).toBe(200);
+    const [before] = await findVoter("Mover");
+    expect(before.household).toMatchObject({ address: "7 Old Rd" });
+
+    expect((await send(member.cookie, "PATCH", { id: before.id, registeredAddress: "9 New Rd" })).status).toBe(200);
+    const [after] = await findVoter("Mover");
+    expect(after.registeredAddress).toBe("9 New Rd");
+    expect(after.household).toBeNull();
+  });
+
+  test("renaming a voter onto another voter at the same address is refused", async () => {
+    await addVoter({ firstName: "Ann", lastName: "Twin", registeredAddress: "1 Oak St" });
+    const other = await addVoter({ firstName: "Bea", lastName: "Twin", registeredAddress: "1 Oak St" });
+
+    const res = await send(member.cookie, "PATCH", { id: other.id, firstName: "ann" });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe("ann Twin at this address is already on your voter list.");
+
+    // Moving onto that person's address is the same clash.
+    const third = await addVoter({ firstName: "Ann", lastName: "Twin", registeredAddress: "2 Oak St" });
+    expect((await send(member.cookie, "PATCH", { id: third.id, registeredAddress: "1 OAK ST" })).status).toBe(409);
+
+    // Saving a voter's own unchanged name and address isn't a clash with themselves.
+    expect((await send(member.cookie, "PATCH", { id: other.id, firstName: "Bea", phone: "555-0123" })).status).toBe(200);
+  });
+
+  test("only owners can delete a voter, and deleting releases their claim", async () => {
+    const voter = await addVoter({ firstName: "Del", lastName: "Etable" });
+
+    expect((await send(member.cookie, "DELETE", { id: voter.id })).status).toBe(403);
+    expect(await findVoter("Etable")).toHaveLength(1);
+
+    const volunteer = await (await post(owner.cookie, "/api/volunteers", { campaignId, firstName: "Cal", lastName: "Claimer" })).json();
+    const claim = await post(owner.cookie, "/api/claims", { voterId: voter.id, channel: "call", volunteerId: volunteer.id });
+    expect(claim.status).toBe(200);
+
+    expect((await send(owner.cookie, "DELETE", { id: voter.id })).status).toBe(200);
+    expect(await findVoter("Etable")).toHaveLength(0);
+    const claims = await (await fetchAs(owner.cookie, `/api/claims?channel=call&campaignId=${campaignId}`)).json();
+    expect(claims.items.map((c: { voterId: string }) => c.voterId)).not.toContain(voter.id);
+  });
+
+  test("a voter with call or door-knock history can't be deleted, so outreach counts don't change", async () => {
+    const voter = await addVoter({ firstName: "Hist", lastName: "Ory" });
+    const call = await post(owner.cookie, "/api/calls", { campaignId, voterId: voter.id, outcome: "contacted" });
+    expect(call.status).toBe(200);
+    const dashboard = async () => (await (await fetchAs(owner.cookie, `/api/dashboard?campaignId=${campaignId}`)).json()).totals;
+    const before = await dashboard();
+
+    const res = await send(owner.cookie, "DELETE", { id: voter.id });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toContain("Hist Ory has call or door-knock history");
+    expect(await findVoter("Ory")).toHaveLength(1);
+    expect(await dashboard()).toEqual(before);
+  });
 });
