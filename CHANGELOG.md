@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Activation funnel on the platform admin page (`GET /api/platform/funnel`,
+  platform owner only): per campaign, when it signed up, first added
+  voters, added a volunteer besides the owner, sent an invite, and logged a
+  first contact attempt, with step counts and the median time from signup
+  to activation. Shows setup progress only, never record contents.
 - Voter list import: upload a CSV, check the detected column mapping, and
   import. Precincts and households are created from the file and duplicates
   are skipped (`POST /api/voters/import`, owners only).
