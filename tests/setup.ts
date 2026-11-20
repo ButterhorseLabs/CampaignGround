@@ -11,7 +11,8 @@ const BASE_DATABASE_URL =
   process.env.DATABASE_URL ?? "postgresql://campaignground:campaignground@localhost:55432/campaignground";
 export const TEST_DATABASE_URL = deriveTestDbUrl(BASE_DATABASE_URL);
 
-export const TEST_PORT = 3099;
+// Override with TEST_PORT (and a distinct DATABASE_URL) to run several suites side by side.
+export const TEST_PORT = Number(process.env.TEST_PORT ?? 3099);
 export const TEST_BASE_URL = `http://localhost:${TEST_PORT}`;
 export const TEST_WEBHOOK_USERNAME = "test-webhook-user";
 export const TEST_WEBHOOK_PASSWORD = "test-webhook-password";
