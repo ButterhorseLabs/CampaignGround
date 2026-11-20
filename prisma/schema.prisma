@@ -153,6 +153,7 @@ model Voter {
   phone           String?
   partyAffiliation String? // e.g., Dem, Rep, Ind, Green, Lib
   registeredAddress String?
+  countyVoterId   String?  // the election office's ID for this voter; import dedupes on it
   birthYear       Int?
   voterSince      Int?
   votedIn2024     Boolean?
@@ -184,6 +185,8 @@ model Voter {
   assignedTasks   Task[]
   donor           Donor?
   contactClaims   ContactClaim[]
+
+  @@index([campaignId, countyVoterId])
 }
 
 // ===== Volunteer =====

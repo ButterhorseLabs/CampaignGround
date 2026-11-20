@@ -34,6 +34,7 @@ const importCell = z.string().max(500).optional();
 export const voterImportRowSchema = z.object({
   firstName: importCell,
   lastName: importCell,
+  countyVoterId: importCell,
   email: importCell,
   phone: importCell,
   partyAffiliation: importCell,
@@ -42,6 +43,7 @@ export const voterImportRowSchema = z.object({
   state: importCell,
   zip: importCell,
   precinct: importCell,
+  birthYear: importCell, // a year or date of birth; the year is extracted
   supportLevel: importCell,
 });
 
