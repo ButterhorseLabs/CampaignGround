@@ -3,6 +3,7 @@
 import { useApp, type Module } from "@/lib/store";
 import { useCurrentMembership } from "@/lib/memberships";
 import { cn } from "@/lib/utils";
+import { ModuleLink } from "./module-link";
 import {
   LayoutDashboard,
   Users,
@@ -75,14 +76,13 @@ export function BrandLockup() {
 /** Grouped module navigation, shared by the desktop sidebar and the mobile sheet. */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const active = useApp((s) => s.active);
-  const setModule = useApp((s) => s.set);
   const role = useCurrentMembership()?.role ?? null;
 
   return (
     <nav aria-label="Modules" className="px-3 py-4">
       {NAV.map((group) => (
         <div key={group.section} className="mb-5 last:mb-0">
-          <div className="px-2 mb-1.5 text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground">
+          <div className="px-2 mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             {group.section}
           </div>
           <ul className="space-y-0.5">
@@ -91,13 +91,10 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               const isActive = active === item.id;
               return (
                 <li key={item.id}>
-                  <button
-                    type="button"
+                  <ModuleLink
+                    module={item.id}
                     aria-current={isActive ? "page" : undefined}
-                    onClick={() => {
-                      setModule(item.id);
-                      onNavigate?.();
-                    }}
+                    onNavigate={onNavigate}
                     className={cn(
                       "w-full group flex min-h-11 md:min-h-0 items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                       isActive
@@ -110,7 +107,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                       className={cn("size-4", isActive ? "" : "text-muted-foreground group-hover:text-sidebar-accent-foreground")}
                     />
                     <span className="flex-1 text-left">{item.label}</span>
-                  </button>
+                  </ModuleLink>
                 </li>
               );
             })}
@@ -139,7 +136,7 @@ export function SidebarFooter() {
           {membership ? electionCountdown(membership.electionDate) : null}
         </span>
         {APP_VERSION && (
-          <Badge variant="outline" className="font-mono text-[10px] py-0 h-4">
+          <Badge variant="outline" className="font-mono text-[11px] py-0 h-4">
             v{APP_VERSION}
           </Badge>
         )}

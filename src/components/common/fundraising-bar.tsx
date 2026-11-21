@@ -9,24 +9,28 @@ interface Props {
   showLabel?: boolean;
 }
 
+const usd = (cents: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
+
 export function FundraisingBar({ raised, goal, className, showLabel = true }: Props) {
   const pct = goal > 0 ? Math.min(100, (raised / goal) * 100) : 0;
   return (
     <div className={cn("space-y-1.5", className)}>
-      <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-500 transition-all"
-          style={{ width: `${pct}%` }}
-        />
+      <div
+        role="progressbar"
+        aria-label="Raised toward fundraising goal"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(pct)}
+        className="h-2.5 rounded-full bg-secondary overflow-hidden"
+      >
+        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
       </div>
       {showLabel && (
-        <div className="flex justify-between text-[11px] text-muted-foreground">
-          <span className="font-mono">{pct.toFixed(1)}%</span>
+        <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
+          <span>{pct.toFixed(1)}%</span>
           <span>
-            <span className="font-semibold text-foreground">
-              {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(raised / 100)}
-            </span>{" "}
-            of {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(goal / 100)}
+            <span className="font-semibold text-foreground">{usd(raised)}</span> of {usd(goal)}
           </span>
         </div>
       )}

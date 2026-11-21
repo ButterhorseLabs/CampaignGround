@@ -1,189 +1,197 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import type { DashboardMetrics } from "@/lib/types";
+import type { DashboardMetrics, DashboardTask } from "@/lib/types";
 import { requireCampaignAccess } from "@/lib/api-auth";
 
-export async function GET(req: NextRequest) {
-  const campaignId = req.nextUrl.searchParams.get("campaignId");
-  const access = await requireCampaignAccess(campaignId);
-  if ("error" in access) return access.error;
+const OPEN_TASK = ["todo", "in-progress", "blocked"];
+const SUPPORTER = ["strong-support", "lean-support"];
+const DAY_MS = 86_400_000;
+const TREND_DAYS = 14;
 
-  const campaign = await db.campaign.findUnique({ where: { id: access.campaignId } });
-  if (!campaign) {
-    return NextResponse.json({ error: "no campaign" }, { status: 404 });
+/** The viewer's IANA time zone if it's a real one, else UTC. */
+function timeZoneOf(raw: string | null): string {
+  if (!raw) return "UTC";
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: raw });
+    return raw;
+  } catch {
+    return "UTC";
   }
+}
+
+/** YYYY-MM-DD for an instant, as a calendar day in `tz`. */
+const localDay = (at: Date, tz: string) => at.toLocaleDateString("en-CA", { timeZone: tz });
+
+// Everything the home screen shows, counted on the server so every figure is
+// whole-campaign and explainable. Days ("yesterday", the 14-day trend) are
+// calendar days in the viewer's time zone (`tz`).
+export async function GET(req: NextRequest) {
+  const sp = req.nextUrl.searchParams;
+  const access = await requireCampaignAccess(sp.get("campaignId"));
+  if ("error" in access) return access.error;
+  const tz = timeZoneOf(sp.get("tz"));
+  const isOwner = access.role === "owner";
+  const campaignId = access.campaignId;
+
+  const campaign = await db.campaign.findUnique({ where: { id: campaignId } });
+  if (!campaign) return NextResponse.json({ error: "no campaign" }, { status: 404 });
+
+  const now = new Date();
+  const today = localDay(now, tz);
+  const yesterday = localDay(new Date(now.getTime() - DAY_MS), tz);
+  const trendDays = Array.from({ length: TREND_DAYS }, (_, i) => localDay(new Date(now.getTime() - (TREND_DAYS - 1 - i) * DAY_MS), tz));
+  // Due dates are calendar days stored at midnight UTC.
+  const todayDue = new Date(`${today}T00:00:00Z`);
+  const contacted = { outcome: "contacted" };
+  const me = isOwner
+    ? null
+    : await db.volunteer.findFirst({ where: { campaignId, userId: access.userId }, select: { id: true } });
 
   const [
-    votersCount,
-    votersContactedRaw,
-    supportersCount,
+    voters,
+    votersContacted,
+    supporters,
     teammates,
     invitesSent,
-    volunteersCount,
-    eventsCount,
+    volunteers,
+    upcomingEventCount,
     tasksOpen,
-    callsCount,
-    supportBreakdownRaw,
-    canvassByDayRaw,
-    callsByDayRaw,
+    tasksOverdue,
+    [visitTotals],
+    callsMade,
+    callsContacted,
+    supportBreakdown,
+    visitsByDay,
+    callsByDay,
+    todayTasks,
     upcomingEvents,
     recentCanvass,
     recentCalls,
     recentEvents,
     recentTasks,
-    precinctRows,
+    precincts,
     fundraising,
   ] = await Promise.all([
-    db.voter.count({ where: { campaignId: campaign.id } }),
-    db.voter.findMany({
-      where: { campaignId: campaign.id, OR: [
-        { callLogs: { some: { outcome: "contacted" } } },
-        { canvassLogs: { some: { outcome: "contacted" } } },
-      ]},
-      select: { id: true },
-    }),
-    db.voter.count({
-      where: { campaignId: campaign.id, supportLevel: { in: ["strong-support", "lean-support"] } },
-    }),
-    db.campaignMembership.count({ where: { campaignId: campaign.id } }),
-    db.invite.count({ where: { campaignId: campaign.id } }),
-    db.volunteer.count({ where: { campaignId: campaign.id } }),
-    db.event.count({ where: { campaignId: campaign.id } }),
-    db.task.count({ where: { campaignId: campaign.id, status: { in: ["todo", "in-progress", "blocked"] } } }),
-    db.callLog.count({ where: { campaignId: campaign.id } }),
-    db.voter.groupBy({
-      by: ["supportLevel"],
-      where: { campaignId: campaign.id },
-      _count: { _all: true },
-    }),
-    db.canvassLog.findMany({
-      where: { campaignId: campaign.id },
-      select: { contactedAt: true, householdId: true, voterId: true, id: true },
-    }),
-    db.callLog.findMany({
-      where: { campaignId: campaign.id },
-      select: { calledAt: true },
-    }),
-    db.event.findMany({
-      where: { campaignId: campaign.id, startTime: { gte: new Date() }, status: "scheduled" },
-      orderBy: { startTime: "asc" },
-      take: 5,
-      include: { _count: { select: { attendees: true } } },
-    }),
-    db.canvassLog.findMany({
-      where: { campaignId: campaign.id },
-      include: { voter: { select: { firstName: true, lastName: true } } },
-      orderBy: { contactedAt: "desc" },
-      take: 4,
-    }),
-    db.callLog.findMany({
-      where: { campaignId: campaign.id },
-      include: { voter: { select: { firstName: true, lastName: true } } },
-      orderBy: { calledAt: "desc" },
-      take: 4,
-    }),
-    db.event.findMany({
-      where: { campaignId: campaign.id },
-      orderBy: { startTime: "desc" },
-      take: 3,
-      include: { _count: { select: { attendees: true } } },
-    }),
+    db.voter.count({ where: { campaignId } }),
+    db.voter.count({ where: { campaignId, OR: [{ callLogs: { some: contacted } }, { canvassLogs: { some: contacted } }] } }),
+    db.voter.count({ where: { campaignId, supportLevel: { in: SUPPORTER } } }),
+    db.campaignMembership.count({ where: { campaignId } }),
+    db.invite.count({ where: { campaignId } }),
+    db.volunteer.count({ where: { campaignId } }),
+    db.event.count({ where: { campaignId, status: "scheduled", startTime: { gte: now } } }),
+    db.task.count({ where: { campaignId, status: { in: OPEN_TASK } } }),
+    db.task.count({ where: { campaignId, status: { in: OPEN_TASK }, dueDate: { lt: todayDue } } }),
+    // A door is a household; a visit without one counts the voter (or the visit) as its own door.
+    db.$queryRaw<{ visits: number; doors: number }[]>`
+      SELECT COUNT(*)::int AS "visits", COUNT(DISTINCT COALESCE("householdId", "voterId", "id"))::int AS "doors"
+      FROM "CanvassLog" WHERE "campaignId" = ${campaignId}`,
+    db.callLog.count({ where: { campaignId } }),
+    db.callLog.count({ where: { campaignId, outcome: "contacted" } }),
+    db.voter.groupBy({ by: ["supportLevel"], where: { campaignId }, _count: { _all: true } }),
+    db.$queryRaw<{ day: string; n: number }[]>`
+      SELECT to_char(("contactedAt" AT TIME ZONE 'UTC') AT TIME ZONE ${tz}, 'YYYY-MM-DD') AS "day", COUNT(*)::int AS "n"
+      FROM "CanvassLog"
+      WHERE "campaignId" = ${campaignId} AND "contactedAt" >= ${new Date(now.getTime() - (TREND_DAYS + 1) * DAY_MS)}
+      GROUP BY 1`,
+    db.$queryRaw<{ day: string; n: number }[]>`
+      SELECT to_char(("calledAt" AT TIME ZONE 'UTC') AT TIME ZONE ${tz}, 'YYYY-MM-DD') AS "day", COUNT(*)::int AS "n"
+      FROM "CallLog"
+      WHERE "campaignId" = ${campaignId} AND "calledAt" >= ${new Date(now.getTime() - (TREND_DAYS + 1) * DAY_MS)}
+      GROUP BY 1`,
+    // Owners: everything due today or overdue. Members: their own open tasks.
     db.task.findMany({
-      where: { campaignId: campaign.id, status: { not: "done" } },
-      orderBy: { updatedAt: "desc" },
-      take: 4,
+      where: isOwner
+        ? { campaignId, status: { in: OPEN_TASK }, dueDate: { lte: todayDue } }
+        : { campaignId, status: { in: OPEN_TASK }, assignedVolunteerId: me?.id ?? "none" },
+      orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
+      take: 5,
       include: { volunteer: { select: { firstName: true, lastName: true } } },
     }),
-    db.precinct.findMany({
-      where: { campaignId: campaign.id, voters: { some: {} } },
-      include: {
-        voters: {
-          where: { campaignId: campaign.id },
-          select: { supportLevel: true, id: true },
-        },
-      },
+    db.event.findMany({
+      where: { campaignId, startTime: { gte: now }, status: "scheduled" },
+      orderBy: { startTime: "asc" },
+      take: 5,
+      include: { _count: { select: { attendees: { where: { rsvpStatus: { in: ["registered", "attended"] } } } } } },
     }),
+    db.canvassLog.findMany({
+      where: { campaignId },
+      include: { voter: { select: { firstName: true, lastName: true } }, household: { select: { address: true } } },
+      orderBy: { contactedAt: "desc" },
+      take: 3,
+    }),
+    db.callLog.findMany({
+      where: { campaignId },
+      include: { voter: { select: { firstName: true, lastName: true } } },
+      orderBy: { calledAt: "desc" },
+      take: 3,
+    }),
+    // Only events that have happened belong in recent activity.
+    db.event.findMany({
+      where: { campaignId, startTime: { lte: now }, status: { not: "cancelled" } },
+      orderBy: { startTime: "desc" },
+      take: 2,
+    }),
+    db.task.findMany({
+      where: { campaignId },
+      orderBy: { updatedAt: "desc" },
+      take: 2,
+    }),
+    db.$queryRaw<{ name: string; total: number; supporters: number; contacted: number }[]>`
+      SELECT p."name",
+             COUNT(*)::int AS "total",
+             (COUNT(*) FILTER (WHERE v."supportLevel" IN ('strong-support', 'lean-support')))::int AS "supporters",
+             (COUNT(*) FILTER (WHERE
+               EXISTS (SELECT 1 FROM "CallLog" c WHERE c."voterId" = v."id" AND c."outcome" = 'contacted')
+               OR EXISTS (SELECT 1 FROM "CanvassLog" k WHERE k."voterId" = v."id" AND k."outcome" = 'contacted')))::int AS "contacted"
+      FROM "Precinct" p JOIN "Voter" v ON v."precinctId" = p."id"
+      WHERE p."campaignId" = ${campaignId}
+      GROUP BY p."id", p."name"`,
     // Donor data never leaves the server for members.
-    access.role === "owner" ? loadFundraising(campaign.id, campaign.fundraisingGoalCents) : null,
+    isOwner ? loadFundraising(campaignId, campaign.fundraisingGoalCents) : null,
   ]);
 
-  // Build canvass/calls by-day (last 14 days)
-  const days = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (13 - i));
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
-  const dayKey = (d: Date) => d.toISOString().slice(0, 10);
-  const canvassByDay = days.map((d) => {
-    const k = dayKey(d);
+  const countOn = (rows: { day: string; n: number }[], day: string) => rows.find((r) => r.day === day)?.n ?? 0;
+  const tasks: DashboardTask[] = todayTasks.map((t) => {
+    const due = t.dueDate?.toISOString().slice(0, 10) ?? null;
     return {
-      day: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      count: canvassByDayRaw.filter((c) => dayKey(new Date(c.contactedAt)) === k).length,
-    };
-  });
-  const callsByDay = days.map((d) => {
-    const k = dayKey(d);
-    return {
-      day: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      count: callsByDayRaw.filter((c) => dayKey(new Date(c.calledAt)) === k).length,
+      id: t.id,
+      title: t.title,
+      dueDate: due,
+      overdue: due !== null && due < today,
+      assignee: t.volunteer ? `${t.volunteer.firstName} ${t.volunteer.lastName}` : null,
     };
   });
 
-  const votersContactedIds = new Set(votersContactedRaw.map((v) => v.id));
-  const votersContacted = votersContactedIds.size;
-
-  // Recent activity feed
-  const recentActivity: DashboardMetrics["recentActivity"] = [];
-  fundraising?.recent.slice(0, 3).forEach((d) => {
-    recentActivity.push({
-      kind: "donation",
-      label: `${d.donor?.firstName ?? ""} ${d.donor?.lastName ?? ""} donated`,
+  const fullName = (p: { firstName: string; lastName: string } | null | undefined) => (p ? `${p.firstName} ${p.lastName}` : null);
+  const recentActivity: DashboardMetrics["recentActivity"] = [
+    ...(fundraising?.recent.slice(0, 3).map((d) => ({
+      kind: "donation" as const,
+      label: `${fullName(d.donor) ?? "A donor"} gave`,
       sub: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(d.amountCents / 100),
       at: d.donationDate,
-    });
-  });
-  recentCanvass.slice(0, 3).forEach((c) => {
-    recentActivity.push({
-      kind: "canvass",
-      label: `Visited ${c.voter?.firstName ?? ""} ${c.voter?.lastName ?? ""}`,
-      sub: c.outcome,
+    })) ?? []),
+    ...recentCanvass.map((c) => ({
+      kind: "canvass" as const,
+      label: `Visited ${fullName(c.voter) ?? c.household?.address ?? "a door"}`,
+      status: c.outcome,
       at: c.contactedAt.toISOString(),
-    });
-  });
-  recentCalls.slice(0, 3).forEach((c) => {
-    recentActivity.push({
-      kind: "call",
-      label: `Called ${c.voter?.firstName ?? ""} ${c.voter?.lastName ?? ""}`,
-      sub: c.outcome,
+    })),
+    ...recentCalls.map((c) => ({
+      kind: "call" as const,
+      label: `Called ${fullName(c.voter) ?? "a voter"}`,
+      status: c.outcome,
       at: c.calledAt.toISOString(),
-    });
-  });
-  recentEvents.slice(0, 2).forEach((e) => {
-    recentActivity.push({
-      kind: "event",
+    })),
+    ...recentEvents.map((e) => ({
+      kind: "event" as const,
       label: e.title,
-      sub: e.startTime.toLocaleDateString(),
+      sub: e.location ?? undefined,
       at: e.startTime.toISOString(),
-    });
-  });
-  recentTasks.slice(0, 2).forEach((t) => {
-    recentActivity.push({
-      kind: "task",
-      label: t.title,
-      sub: t.status,
-      at: t.updatedAt.toISOString(),
-    });
-  });
-  recentActivity.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
-
-  // Precincts summary
-  const precincts = precinctRows.map((p) => {
-    const total = p.voters.length;
-    const supporters = p.voters.filter((v) => v.supportLevel === "strong-support" || v.supportLevel === "lean-support").length;
-    const contacted = p.voters.filter((v) => votersContactedIds.has(v.id)).length;
-    return { name: p.name, supporters, contacted, total };
-  });
+    })),
+    ...recentTasks.map((t) => ({ kind: "task" as const, label: t.title, status: t.status, at: t.updatedAt.toISOString() })),
+  ]
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, 8);
 
   const result: DashboardMetrics = {
     campaign: {
@@ -196,23 +204,29 @@ export async function GET(req: NextRequest) {
       voteGoal: campaign.voteGoal,
     },
     totals: {
-      voters: votersCount,
+      voters,
       votersContacted,
-      supporters: supportersCount,
+      supporters,
       teammates,
       invitesSent,
-      volunteers: volunteersCount,
-      events: eventsCount,
+      volunteers,
+      upcomingEvents: upcomingEventCount,
       tasksOpen,
-      // A door is a household; voters without one count as their own door.
-      canvassDoors: new Set(canvassByDayRaw.map((c) => c.householdId ?? c.voterId ?? c.id)).size,
-      callsMade: callsCount,
+      tasksOverdue,
+      canvassDoors: visitTotals.doors,
+      canvassVisits: visitTotals.visits,
+      callsMade,
+      callsContacted,
+    },
+    today: {
+      tasks,
+      yesterday: { visits: countOn(visitsByDay, yesterday), calls: countOn(callsByDay, yesterday) },
+      onRoster: isOwner || !!me,
     },
     fundraising,
     outreach: {
-      supportBreakdown: supportBreakdownRaw.map((s) => ({ level: s.supportLevel, count: s._count._all })),
-      canvassByDay,
-      callsByDay,
+      supportBreakdown: supportBreakdown.map((s) => ({ level: s.supportLevel, count: s._count._all })),
+      byDay: trendDays.map((date) => ({ date, visits: countOn(visitsByDay, date), calls: countOn(callsByDay, date) })),
     },
     upcomingEvents: upcomingEvents.map((e) => ({
       id: e.id,
@@ -230,8 +244,8 @@ export async function GET(req: NextRequest) {
       attendeeCount: e._count.attendees,
       createdAt: e.createdAt.toISOString(),
     })),
-    recentActivity: recentActivity.slice(0, 8),
-    precincts,
+    recentActivity,
+    precincts: precincts.sort((a, b) => a.name.localeCompare(b.name, "en", { numeric: true })),
   };
 
   return NextResponse.json(result);
@@ -254,11 +268,9 @@ async function loadFundraising(campaignId: string, goalCents: number): Promise<N
       _sum: { amountCents: true },
     }),
   ]);
-  const raisedCents = raisedAgg._sum.amountCents ?? 0;
   return {
-    raisedCents,
+    raisedCents: raisedAgg._sum.amountCents ?? 0,
     goalCents,
-    percent: goalCents > 0 ? (raisedCents / goalCents) * 100 : 0,
     donors,
     donations,
     byMethod: donationsByMethodRaw.map((d) => ({ method: d.method, totalCents: d._sum.amountCents ?? 0 })),

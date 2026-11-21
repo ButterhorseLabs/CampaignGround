@@ -26,6 +26,7 @@ const DOT_CLASSES: Record<string, string> = {
   orange: "bg-orange-500",
   red: "bg-red-500",
   slate: "bg-slate-400",
+  violet: "bg-violet-500",
 };
 
 function supportConfig(level: Props["level"]) {
@@ -34,6 +35,9 @@ function supportConfig(level: Props["level"]) {
 
 /** Tinted fill, text, and border from the status ramp, by hue name. */
 export const statusTone = (color: string) => COLOR_CLASSES[color] ?? COLOR_CLASSES.slate;
+
+/** Solid fill from the status ramp, for dots and bar segments. */
+export const statusDot = (color: string) => DOT_CLASSES[color] ?? DOT_CLASSES.slate;
 
 /** Tinted fill, text, and border for a support level, from the status ramp. */
 export const supportTone = (level: Props["level"]) => statusTone(supportConfig(level).color);

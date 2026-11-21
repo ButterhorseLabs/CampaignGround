@@ -172,6 +172,14 @@ export interface Precinct {
   createdAt: string;
 }
 
+export interface DashboardTask {
+  id: string;
+  title: string;
+  dueDate: string | null;
+  overdue: boolean;
+  assignee: string | null;
+}
+
 export interface DashboardMetrics {
   campaign: {
     candidateName: string;
@@ -183,6 +191,7 @@ export interface DashboardMetrics {
     voteGoal: number;
   };
   totals: {
+    /** Voters imported or added to this campaign's list, not the district's registration. */
     voters: number;
     votersContacted: number;
     supporters: number;
@@ -190,17 +199,30 @@ export interface DashboardMetrics {
     teammates: number;
     /** Invites ever sent, any status. */
     invitesSent: number;
+    /** Everyone on the volunteer roster. */
     volunteers: number;
-    events: number;
+    /** Scheduled events still ahead. */
+    upcomingEvents: number;
     tasksOpen: number;
+    tasksOverdue: number;
+    /** Distinct doors (households) with a visit logged. */
     canvassDoors: number;
+    canvassVisits: number;
     callsMade: number;
+    callsContacted: number;
+  };
+  /** What needs doing now. For members, tasks are only theirs. */
+  today: {
+    tasks: DashboardTask[];
+    /** Visits and calls logged yesterday, in the viewer's time zone. */
+    yesterday: { visits: number; calls: number };
+    /** Members: whether they're on the volunteer roster, so they can canvass or call. */
+    onRoster: boolean;
   };
   /** Owner-only; null for members (donor data). */
   fundraising: {
     raisedCents: number;
     goalCents: number;
-    percent: number;
     donors: number;
     donations: number;
     byMethod: { method: string; totalCents: number }[];
@@ -208,14 +230,16 @@ export interface DashboardMetrics {
   } | null;
   outreach: {
     supportBreakdown: { level: string; count: number }[];
-    canvassByDay: { day: string; count: number }[];
-    callsByDay: { day: string; count: number }[];
+    /** The last 14 days in the viewer's time zone; `date` is YYYY-MM-DD. */
+    byDay: { date: string; visits: number; calls: number }[];
   };
   upcomingEvents: CampaignEvent[];
   recentActivity: {
     kind: "donation" | "canvass" | "call" | "event" | "task";
     label: string;
-    sub: string;
+    /** Canvass or call outcome code, or task status. */
+    status?: string;
+    sub?: string;
     at: string;
   }[];
   precincts: { name: string; supporters: number; contacted: number; total: number }[];

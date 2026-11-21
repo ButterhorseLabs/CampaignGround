@@ -258,4 +258,54 @@ describe("dashboard", () => {
     const memberBody = await memberRes.json();
     expect(memberBody.fundraising).toBeNull();
   });
+
+  test("events: recent activity is past only, upcoming counts scheduled future events, RSVPs skip cancelled and no-shows", async () => {
+    const fresh = await signupAndLogin();
+    const day = 86_400_000;
+    await testDb.event.create({ data: { campaignId: fresh.campaignId, title: "Past rally", startTime: new Date(Date.now() - day) } });
+    await testDb.event.create({ data: { campaignId: fresh.campaignId, title: "Cancelled picnic", status: "cancelled", startTime: new Date(Date.now() + day) } });
+    const future = await testDb.event.create({ data: { campaignId: fresh.campaignId, title: "Future town hall", startTime: new Date(Date.now() + 2 * day) } });
+    await testDb.eventAttendee.createMany({
+      data: ["registered", "attended", "cancelled", "no-show"].map((rsvpStatus) => ({ eventId: future.id, rsvpStatus })),
+    });
+
+    const res = await fetchAs(fresh.cookie, `/api/dashboard?campaignId=${fresh.campaignId}&tz=America/Los_Angeles`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.campaign.party).toBeNull();
+    expect(body.totals.upcomingEvents).toBe(1);
+    expect(body.upcomingEvents.map((e: { title: string }) => e.title)).toEqual(["Future town hall"]);
+    expect(body.upcomingEvents[0].attendeeCount).toBe(2);
+    const eventLabels = body.recentActivity.filter((a: { kind: string }) => a.kind === "event").map((a: { label: string }) => a.label);
+    expect(eventLabels).toEqual(["Past rally"]);
+    // The trend's last day is today where the viewer is.
+    expect(body.outreach.byDay).toHaveLength(14);
+    expect(body.outreach.byDay.at(-1).date).toBe(new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }));
+
+    const badTz = await fetchAs(fresh.cookie, `/api/dashboard?campaignId=${fresh.campaignId}&tz=Not%2FAZone`);
+    expect(badTz.status).toBe(200);
+  });
+
+  test("members see only their own tasks in their shift", async () => {
+    const memberUser = await testDb.user.findUniqueOrThrow({ where: { email: member.email } });
+    // Accepting the invite already linked the member to a volunteer record.
+    const mine = await testDb.volunteer.findUniqueOrThrow({ where: { campaignId_userId: { campaignId, userId: memberUser.id } } });
+    const myTask = await testDb.task.create({ data: { campaignId, title: "Member's own task", assignedVolunteerId: mine.id } });
+    await testDb.task.create({ data: { campaignId, title: "Someone else's task", assignedVolunteerId: volunteerId, dueDate: new Date(Date.now() - 86_400_000) } });
+
+    const body = await (await fetchAs(member.cookie, `/api/dashboard?campaignId=${campaignId}`)).json();
+    expect(body.today.onRoster).toBe(true);
+    expect(body.today.tasks.map((t: { id: string }) => t.id)).toEqual([myTask.id]);
+  });
+
+  test("only owners can set campaign goals", async () => {
+    const goals = { campaignId, voteGoal: 4200, fundraisingGoalCents: 5_000_000 };
+    const patch = (cookie: string) =>
+      fetchAs(cookie, "/api/campaign", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(goals) });
+    expect((await patch(member.cookie)).status).toBe(403);
+    expect((await patch(owner.cookie)).status).toBe(200);
+    const body = await (await fetchAs(owner.cookie, `/api/dashboard?campaignId=${campaignId}`)).json();
+    expect(body.campaign.voteGoal).toBe(4200);
+    expect(body.fundraising.goalCents).toBe(5_000_000);
+  });
 });

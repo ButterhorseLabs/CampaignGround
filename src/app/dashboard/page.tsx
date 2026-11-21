@@ -86,11 +86,17 @@ function Shell() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      <a
+        href="#main-scroll"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:shadow-md focus:ring-[3px] focus:ring-ring/50"
+      >
+        Skip to content
+      </a>
       <Sidebar />
       <MobileNav />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar />
-        <main id="main-scroll" className="flex-1 overflow-y-auto scroll-area-thin">
+        <main id="main-scroll" tabIndex={-1} className="flex-1 overflow-y-auto scroll-area-thin outline-none">
           {active === "dashboard" && <DashboardView />}
           {active === "voters" && <VotersView />}
           {active === "volunteers" && <VolunteersView />}

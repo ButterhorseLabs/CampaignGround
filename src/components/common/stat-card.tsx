@@ -9,7 +9,7 @@ interface Props {
   value: string | number;
   sub?: string;
   trend?: { value: number; positive?: boolean };
-  accent?: "primary" | "emerald" | "amber" | "rose" | "violet" | "cyan";
+  accent?: "primary" | "emerald" | "amber" | "rose" | "violet" | "cyan" | "slate";
   className?: string;
   children?: React.ReactNode;
 }
@@ -21,6 +21,7 @@ const ACCENTS: Record<string, { bg: string; fg: string }> = {
   rose: { bg: "bg-rose-500/10", fg: "text-rose-600 dark:text-rose-400" },
   violet: { bg: "bg-violet-500/10", fg: "text-violet-600 dark:text-violet-400" },
   cyan: { bg: "bg-cyan-500/10", fg: "text-cyan-600 dark:text-cyan-400" },
+  slate: { bg: "bg-muted", fg: "text-muted-foreground" },
 };
 
 export function StatCard({ icon: Icon, label, value, sub, trend, accent = "primary", className, children }: Props) {

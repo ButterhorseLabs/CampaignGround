@@ -44,7 +44,7 @@ function useHasMounted() {
 }
 
 const TITLES: Record<string, { title: string; subtitle: string }> = {
-  dashboard: { title: "Dashboard", subtitle: "Live campaign metrics & recent activity" },
+  dashboard: { title: "Dashboard", subtitle: "Where the campaign stands today" },
   voters: { title: "Voters", subtitle: "Registered voter database with support tracking" },
   volunteers: { title: "Volunteers", subtitle: "Canvassers, phone-bankers, and team leads" },
   donors: { title: "Donors", subtitle: "Contributions, compliance, and fundraising goals" },
@@ -112,7 +112,7 @@ export function Topbar() {
               <DropdownMenuItem key={m.campaignId} onClick={() => setCampaign(m.campaignId)}>
                 <div className="flex flex-col">
                   <span className="text-sm">{m.campaignName}</span>
-                  <span className="text-[10px] text-muted-foreground">{m.officeSought}</span>
+                  <span className="text-[11px] text-muted-foreground">{m.officeSought}</span>
                 </div>
               </DropdownMenuItem>
             ))}
@@ -144,7 +144,7 @@ export function Topbar() {
         </Avatar>
         <div className="leading-tight hidden md:block">
           <div className="text-xs font-medium truncate max-w-[140px]">{displayName}</div>
-          <div className="text-[10px] text-muted-foreground capitalize">{currentMembership?.role ?? "—"}</div>
+          <div className="text-[11px] text-muted-foreground capitalize">{currentMembership?.role ?? "—"}</div>
         </div>
         <Button
           variant="ghost"
