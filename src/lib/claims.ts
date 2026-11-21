@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface Claim {
@@ -23,6 +23,10 @@ const HEARTBEAT_MS = 60_000;
 export function useClaims(channel: string, campaignId: string | null, activeVolunteerId: string) {
   const qc = useQueryClient();
   const [held, setHeld] = useState<{ voterId: string; volunteerId: string } | null>(null);
+  // The claim the caller most recently asked for. A claim that comes back after
+  // the caller has moved on (released it or asked for another) is let go at once,
+  // so fast skipping can't leave voters held and hidden from other volunteers.
+  const wanted = useRef<string | null>(null);
 
   const { data } = useQuery({
     queryKey: ["claims", channel, campaignId],
@@ -73,8 +77,17 @@ export function useClaims(channel: string, campaignId: string | null, activeVolu
     claims,
     claimedByOthers,
     claim: async (voterId: string, volunteerId: string) => {
+      const key = `${voterId}:${volunteerId}`;
+      wanted.current = key;
       const r = await claimMutation.mutateAsync({ voterId, volunteerId });
-      if (r.ok) {
+      if (r.ok && wanted.current !== key) {
+        fetch("/api/claims", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ voterId, volunteerId, channel }),
+          keepalive: true,
+        }).finally(() => qc.invalidateQueries({ queryKey: ["claims", channel] }));
+      } else if (r.ok) {
         // Keep the same object when re-claiming what we already hold so the
         // heartbeat effect doesn't release and lose it.
         setHeld((prev) =>
@@ -84,7 +97,9 @@ export function useClaims(channel: string, campaignId: string | null, activeVolu
       return r;
     },
     // Releasing happens in the heartbeat effect's cleanup.
-    release: (voterId: string, volunteerId: string) =>
-      setHeld((prev) => (prev?.voterId === voterId && prev.volunteerId === volunteerId ? null : prev)),
+    release: (voterId: string, volunteerId: string) => {
+      if (wanted.current === `${voterId}:${volunteerId}`) wanted.current = null;
+      setHeld((prev) => (prev?.voterId === voterId && prev.volunteerId === volunteerId ? null : prev));
+    },
   };
 }

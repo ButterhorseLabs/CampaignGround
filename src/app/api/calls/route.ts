@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
-import { requireCampaignAccess, assertBelongsToCampaign, assertCanActAsVolunteer } from "@/lib/api-auth";
+import { requireCampaignAccess, assertBelongsToCampaign, assertCanActAsVolunteer, assertCanUndoContact } from "@/lib/api-auth";
 import { parseBody, parseQuery } from "@/lib/api-validate";
 import { paginationSchema } from "@/lib/validation/shared";
 import { callCreateSchema } from "@/lib/validation/call";
@@ -19,15 +19,24 @@ export async function GET(req: NextRequest) {
   const where: Prisma.CallLogWhereInput = { campaignId: access.campaignId };
   if (outcome) where.outcome = outcome;
 
-  const logs = await db.callLog.findMany({
-    where,
-    orderBy: { calledAt: "desc" },
-    include: {
-      voter: { select: { firstName: true, lastName: true, phone: true, precinct: { select: { name: true } } } },
-      volunteer: { select: { firstName: true, lastName: true } },
-    },
-    take: limit,
-  });
+  const [logs, [summary]] = await Promise.all([
+    db.callLog.findMany({
+      where,
+      orderBy: { calledAt: "desc" },
+      include: {
+        voter: { select: { firstName: true, lastName: true, phone: true, precinct: { select: { name: true } } } },
+        volunteer: { select: { firstName: true, lastName: true } },
+      },
+      take: limit,
+    }),
+    // Campaign-wide totals: never narrowed by the outcome filter or capped by the page size.
+    db.$queryRaw<{ calls: number; contacted: number; noAnswer: number; avgLengthSec: number }[]>`
+      SELECT COUNT(*)::int AS "calls",
+             (COUNT(*) FILTER (WHERE "outcome" = 'contacted'))::int AS "contacted",
+             (COUNT(*) FILTER (WHERE "outcome" = 'no-answer'))::int AS "noAnswer",
+             COALESCE(ROUND(AVG("callLengthSec") FILTER (WHERE "callLengthSec" > 0)), 0)::int AS "avgLengthSec"
+      FROM "CallLog" WHERE "campaignId" = ${access.campaignId}`,
+  ]);
 
   return NextResponse.json({
     items: logs.map((l) => ({
@@ -35,7 +44,26 @@ export async function GET(req: NextRequest) {
       calledAt: l.calledAt.toISOString(),
       createdAt: l.createdAt.toISOString(),
     })),
+    summary,
   });
+}
+
+// Undo a call just logged.
+export async function DELETE(req: NextRequest) {
+  const sp = req.nextUrl.searchParams;
+  const access = await requireCampaignAccess(sp.get("campaignId"));
+  if ("error" in access) return access.error;
+
+  const log = await db.callLog.findFirst({
+    where: { id: sp.get("id") ?? "", campaignId: access.campaignId },
+    select: { id: true, volunteerId: true, supportLevel: true },
+  });
+  if (!log) return NextResponse.json({ error: "Call not found" }, { status: 404 });
+  const err = await assertCanUndoContact(access, { volunteerId: log.volunteerId, changedVoter: !!log.supportLevel }, "call");
+  if (err) return err;
+
+  await db.callLog.delete({ where: { id: log.id } });
+  return NextResponse.json({ ok: true });
 }
 
 export async function POST(req: NextRequest) {

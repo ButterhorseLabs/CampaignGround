@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireCampaignAccess, assertCanActAsVolunteer } from "@/lib/api-auth";
 import { parseBody } from "@/lib/api-validate";
-import { claimBodySchema } from "@/lib/validation/claim";
-
-// The holder's client renews its claim every minute while the door/call is
-// open (see src/lib/claims.ts), so this TTL only reaps abandoned claims.
-const CLAIM_TTL_MS = 5 * 60 * 1000;
+import { claimBodySchema, CLAIM_TTL_MS } from "@/lib/validation/claim";
 
 function isStale(claimedAt: Date) {
   return Date.now() - claimedAt.getTime() > CLAIM_TTL_MS;

@@ -121,3 +121,24 @@ export async function assertCanActAsVolunteer(
   }
   return null;
 }
+
+// Who may undo a contact just logged (a canvass visit or a call): whoever could
+// log it as that volunteer, or the owner for one logged without a volunteer.
+// Contacts that changed the voter record are refused, since the voter's earlier
+// values aren't kept to restore.
+export async function assertCanUndoContact(
+  access: { userId: string; campaignId: string; role: "owner" | "member" },
+  log: { volunteerId: string | null; changedVoter: boolean },
+  noun: "visit" | "call"
+): Promise<NextResponse | null> {
+  if (log.volunteerId) {
+    const err = await assertCanActAsVolunteer(access, log.volunteerId);
+    if (err) return err;
+  } else if (access.role !== "owner") {
+    return NextResponse.json({ error: `Only the campaign owner can remove this ${noun}` }, { status: 403 });
+  }
+  if (log.changedVoter) {
+    return NextResponse.json({ error: `This ${noun} updated the voter's record. Edit the voter instead.` }, { status: 409 });
+  }
+  return null;
+}

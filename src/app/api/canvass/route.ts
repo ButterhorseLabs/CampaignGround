@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
-import { requireCampaignAccess, assertBelongsToCampaign, assertCanActAsVolunteer } from "@/lib/api-auth";
+import { requireCampaignAccess, assertBelongsToCampaign, assertCanActAsVolunteer, assertCanUndoContact } from "@/lib/api-auth";
 import { parseBody, parseQuery } from "@/lib/api-validate";
 import { paginationSchema } from "@/lib/validation/shared";
 import { canvassCreateSchema } from "@/lib/validation/canvass";
@@ -53,8 +53,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-// Undo a visit just logged. Visits that changed the voter record (support level,
-// yard sign) are refused, since the voter's earlier values aren't kept to restore.
+// Undo a visit just logged.
 export async function DELETE(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const access = await requireCampaignAccess(sp.get("campaignId"));
@@ -65,15 +64,12 @@ export async function DELETE(req: NextRequest) {
     select: { id: true, volunteerId: true, supportLevel: true, yardSign: true },
   });
   if (!log) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
-  if (log.volunteerId) {
-    const err = await assertCanActAsVolunteer(access, log.volunteerId);
-    if (err) return err;
-  } else if (access.role !== "owner") {
-    return NextResponse.json({ error: "Only the campaign owner can remove this visit" }, { status: 403 });
-  }
-  if (log.supportLevel || log.yardSign) {
-    return NextResponse.json({ error: "This visit updated the voter's record. Edit the voter instead." }, { status: 409 });
-  }
+  const err = await assertCanUndoContact(
+    access,
+    { volunteerId: log.volunteerId, changedVoter: !!log.supportLevel || log.yardSign },
+    "visit"
+  );
+  if (err) return err;
 
   await db.canvassLog.delete({ where: { id: log.id } });
   return NextResponse.json({ ok: true });
