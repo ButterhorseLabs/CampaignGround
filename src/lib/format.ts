@@ -38,6 +38,14 @@ export function formatTime(input: string | Date): string {
   });
 }
 
+/**
+ * Due dates are calendar days stored at midnight UTC. A task is past due once
+ * that day has ended where the viewer is, matching the dashboard.
+ */
+export function isPastDue(dueDate: string): boolean {
+  return dueDate.slice(0, 10) < new Date().toLocaleDateString("en-CA");
+}
+
 export function relativeTime(input: string | Date): string {
   const d = typeof input === "string" ? new Date(input) : input;
   const diff = d.getTime() - Date.now();

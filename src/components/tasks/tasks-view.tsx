@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatDate } from "@/lib/format";
+import { formatDate, isPastDue } from "@/lib/format";
 import { useApp } from "@/lib/store";
 import { useVolunteers } from "@/lib/volunteers";
 import type { Task, Volunteer } from "@/lib/types";
@@ -67,7 +67,7 @@ export function TasksView() {
     return acc;
   }, {} as Record<string, Task[]>);
 
-  const overdue = tasks.filter((t) => t.dueDate && new Date(t.dueDate).getTime() < Date.now() && t.status !== "done").length;
+  const overdue = tasks.filter((t) => t.dueDate && isPastDue(t.dueDate) && t.status !== "done").length;
   const completionRate = tasks.length > 0 ? (grouped.done.length / tasks.length) * 100 : 0;
 
   async function updateStatus(id: string, status: string) {
@@ -149,7 +149,7 @@ export function TasksView() {
                 )}
                 {items.map((t) => {
                   const pri = PRIORITY_INFO[t.priority] ?? PRIORITY_INFO.medium;
-                  const overdue = t.dueDate && new Date(t.dueDate).getTime() < Date.now() && t.status !== "done";
+                  const overdue = t.dueDate && isPastDue(t.dueDate) && t.status !== "done";
                   return (
                     <div key={t.id} className="rounded-md border bg-card p-3 hover:shadow-sm transition-shadow">
                       <div className="flex items-start gap-1.5">
@@ -170,7 +170,7 @@ export function TasksView() {
                         {t.dueDate && (
                           <span className={cn("flex items-center gap-0.5", overdue && "text-rose-600 dark:text-rose-400 font-medium")}>
                             <Calendar className="size-3" />
-                            {formatDate(t.dueDate, { month: "short", day: "numeric" })}
+                            {formatDate(t.dueDate, { year: undefined, timeZone: "UTC" })}
                           </span>
                         )}
                         {t.volunteer && (
