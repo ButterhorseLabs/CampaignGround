@@ -29,7 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { SUPPORT_LEVELS, type CallLog, type Voter, type Volunteer } from "@/lib/types";
+import { ISSUES, SUPPORT_LEVELS, type CallLog, type Voter, type Volunteer } from "@/lib/types";
 import { useSavingAction } from "@/lib/use-saving-action";
 
 interface VoterWithExtras extends Voter {
@@ -44,8 +44,6 @@ export const OUTCOME_INFO: Record<string, { label: string; color: string; icon: 
   refused: { label: "Refused", color: "text-rose-700 bg-rose-500/10 dark:text-rose-300", icon: PhoneOff },
   "call-back": { label: "Call back later", color: "text-cyan-700 bg-cyan-500/10 dark:text-cyan-300", icon: PhoneForwarded },
 };
-
-const ISSUES = ["housing", "schools", "public-safety", "budget", "parks", "transit"];
 
 export function LogCallDialog({ open, onOpenChange, voters, volunteers, defaultVoterId, volunteerId, onSaved }: {
   open: boolean; onOpenChange: (o: boolean) => void;
@@ -154,7 +152,7 @@ export function LogCallDialog({ open, onOpenChange, voters, volunteers, defaultV
                     <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
                     <SelectContent>
                         {ISSUES.map((i) => (
-                        <SelectItem key={i} value={i}>{i}</SelectItem>
+                        <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

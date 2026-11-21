@@ -35,6 +35,15 @@ export interface Door<V> {
   voters: V[];
 }
 
+export interface DoorVisit {
+  outcome: string;
+  contactedAt: string;
+}
+
+/** A door is done once someone answered it or it can't be canvassed; "not home" stays on the list to retry. */
+export const doorIsDone = (door: { lastVisit: DoorVisit | null }) =>
+  door.lastVisit !== null && door.lastVisit.outcome !== "not-home";
+
 const addressCollator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
 
 function compareDoors(a: { address: string | null; parsed: ParsedAddress | null }, b: typeof a) {

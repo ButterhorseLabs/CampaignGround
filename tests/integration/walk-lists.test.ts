@@ -46,13 +46,13 @@ beforeAll(async () => {
 });
 
 describe("GET /api/walk-lists", () => {
-  test("lists every precinct with voters, plus No precinct under the id its doors are fetched by", async () => {
+  test("lists every precinct with voters, sized in doors, plus No precinct under the id its doors are fetched by", async () => {
     const res = await fetchAs(owner.cookie, `/api/walk-lists?campaignId=${campaignId}`);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.items).toEqual([
-      { precinctId, name: "North 1", voterCount: 4 },
-      { precinctId: "none", name: "No precinct", voterCount: 1 },
+      { precinctId, name: "North 1", doorCount: 3 },
+      { precinctId: "none", name: "No precinct", doorCount: 1 },
     ]);
   });
 
@@ -89,5 +89,50 @@ describe("GET /api/walk-lists/doors", () => {
   test("requires a precinct and refuses someone outside the campaign", async () => {
     expect((await doors(owner.cookie, "")).status).toBe(400);
     expect((await doors(outsider.cookie, `precinctId=${precinctId}`)).status).toBeGreaterThanOrEqual(400);
+  });
+});
+
+describe("visits on the walk list", () => {
+  const post = (body: Record<string, unknown>) =>
+    fetchAs(owner.cookie, "/api/canvass", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaignId, ...body }),
+    });
+  let notHomeId: string;
+  let contactedId: string;
+
+  beforeAll(async () => {
+    const elm2 = await testDb.household.findFirstOrThrow({ where: { campaignId, address: "2 Elm St" } });
+    const oak = await testDb.voter.findFirstOrThrow({ where: { campaignId, firstName: "Oak" } });
+    // "Nobody home" logs the household, not one resident.
+    const a = await post({ householdId: elm2.id, outcome: "not-home" });
+    const b = await post({ voterId: oak.id, householdId: oak.householdId, outcome: "contacted", supportLevel: "lean-support" });
+    expect(a.status).toBe(200);
+    expect(b.status).toBe(200);
+    notHomeId = (await a.json()).id;
+    contactedId = (await b.json()).id;
+  });
+
+  test("each door carries its latest visit, and only answered doors count as done", async () => {
+    const res = await fetchAs(owner.cookie, `/api/walk-lists/doors?campaignId=${campaignId}&precinctId=${precinctId}`);
+    const body = await res.json();
+    const byAddress = Object.fromEntries(body.items.map((d: DoorBody & { lastVisit: { outcome: string } | null }) => [d.address, d.lastVisit?.outcome ?? null]));
+    expect(byAddress).toEqual({ "2 Elm St": "not-home", "10 Elm St": null, "1 Oak Ave": "contacted" });
+    expect(body.done).toBe(1);
+  });
+
+  test("canvass totals cover the whole campaign whatever the log filter", async () => {
+    const body = await (await fetchAs(owner.cookie, `/api/canvass?campaignId=${campaignId}&outcome=refused`)).json();
+    expect(body.items).toEqual([]);
+    expect(body.summary).toEqual({ attempts: 2, doors: 2, contacted: 1, notHome: 1, yardSigns: 0 });
+  });
+
+  test("undo removes a plain visit but not one that changed the voter record", async () => {
+    const del = (cookie: string, id: string) => fetchAs(cookie, `/api/canvass?campaignId=${campaignId}&id=${id}`, { method: "DELETE" });
+    expect((await del(outsider.cookie, notHomeId)).status).toBeGreaterThanOrEqual(400);
+    expect((await del(owner.cookie, contactedId)).status).toBe(409);
+    expect((await del(owner.cookie, notHomeId)).status).toBe(200);
+    expect(await testDb.canvassLog.findUnique({ where: { id: notHomeId } })).toBeNull();
   });
 });

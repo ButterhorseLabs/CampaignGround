@@ -29,7 +29,7 @@ import { toast } from "sonner";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
-import type { CallLog, Voter, Volunteer } from "@/lib/types";
+import { issueLabel, type CallLog, type Voter, type Volunteer } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { useClaims } from "@/lib/claims";
 import { ActingAsPicker } from "@/components/common/acting-as-picker";
@@ -267,7 +267,7 @@ export function PhoneBankView() {
                           {l.voter?.phone && <span className="font-mono">{l.voter.phone}</span>}
                           {l.voter?.precinct?.name && <span>· {l.voter.precinct.name}</span>}
                           {l.volunteer && <span>· {l.volunteer.firstName} {l.volunteer.lastName}</span>}
-                          {l.issuePriority && <span>· issue: {l.issuePriority}</span>}
+                          {l.issuePriority && <span>· Issue: {issueLabel(l.issuePriority)}</span>}
                         </div>
                         {l.notes && (
                           <div className="text-[11px] mt-1 text-foreground/80 italic bg-muted/30 px-2 py-1 rounded">

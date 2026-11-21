@@ -236,6 +236,18 @@ export const SUPPORT_SOURCE_LABELS: Record<string, string> = {
   call: "phone call",
 };
 
+/** Issue tags a canvasser or caller can record, stored as the value. */
+export const ISSUES: { value: string; label: string }[] = [
+  { value: "housing", label: "Housing" },
+  { value: "schools", label: "Schools" },
+  { value: "public-safety", label: "Public safety" },
+  { value: "budget", label: "Budget" },
+  { value: "parks", label: "Parks" },
+  { value: "transit", label: "Transit" },
+];
+
+export const issueLabel = (value: string) => ISSUES.find((i) => i.value === value)?.label ?? value;
+
 /** Party codes stored on voters, with the words shown to people. Imported county codes outside this list display as stored. */
 export const PARTIES: { value: string; label: string }[] = [
   { value: "Dem", label: "Democratic" },

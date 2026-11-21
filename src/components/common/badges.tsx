@@ -16,6 +16,7 @@ const COLOR_CLASSES: Record<string, string> = {
   orange: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-900",
   red: "bg-red-100 text-red-800 border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-900",
   slate: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/50 dark:text-slate-300 dark:border-slate-800",
+  violet: "bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-950/50 dark:text-violet-300 dark:border-violet-900",
 };
 
 const DOT_CLASSES: Record<string, string> = {
@@ -31,8 +32,11 @@ function supportConfig(level: Props["level"]) {
   return SUPPORT_LEVELS.find((s) => s.value === level) ?? SUPPORT_LEVELS.find((s) => s.value === "unknown")!;
 }
 
+/** Tinted fill, text, and border from the status ramp, by hue name. */
+export const statusTone = (color: string) => COLOR_CLASSES[color] ?? COLOR_CLASSES.slate;
+
 /** Tinted fill, text, and border for a support level, from the status ramp. */
-export const supportTone = (level: Props["level"]) => COLOR_CLASSES[supportConfig(level).color];
+export const supportTone = (level: Props["level"]) => statusTone(supportConfig(level).color);
 
 export function SupportBadge({ level, className, size = "sm" }: Props) {
   const config = supportConfig(level);
@@ -48,6 +52,15 @@ export function SupportBadge({ level, className, size = "sm" }: Props) {
     >
       <span className={cn("size-1.5 rounded-full", DOT_CLASSES[color])} aria-hidden />
       {config.label}
+    </span>
+  );
+}
+
+/** A status-ramp pill for any labelled state (canvass outcome, yard sign, ...). */
+export function StatusBadge({ color, children, className }: { color: string; children: React.ReactNode; className?: string }) {
+  return (
+    <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap", statusTone(color), className)}>
+      {children}
     </span>
   );
 }

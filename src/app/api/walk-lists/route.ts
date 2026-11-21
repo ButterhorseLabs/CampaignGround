@@ -4,22 +4,26 @@ import { requireCampaignAccess } from "@/lib/api-auth";
 import { NO_PRECINCT } from "@/lib/walk-list";
 
 // Every walk list a canvasser can pick: one per precinct with voters, plus
-// "No precinct" when some voters have none.
+// "No precinct" when some voters have none. Sized in doors, the unit a canvasser walks.
 export async function GET(req: NextRequest) {
   const access = await requireCampaignAccess(req.nextUrl.searchParams.get("campaignId"));
   if ("error" in access) return access.error;
 
-  const [precincts, unassigned] = await Promise.all([
-    db.precinct.findMany({
-      where: { campaignId: access.campaignId, voters: { some: {} } },
-      select: { id: true, name: true, _count: { select: { voters: true } } },
-    }),
-    db.voter.count({ where: { campaignId: access.campaignId, precinctId: null } }),
+  // A door is a household; a voter without one is their own door (same rule as buildDoors).
+  const [counts, precincts] = await Promise.all([
+    db.$queryRaw<{ precinctId: string | null; doors: number }[]>`
+      SELECT "precinctId", COUNT(DISTINCT COALESCE("householdId", "id"))::int AS "doors"
+      FROM "Voter" WHERE "campaignId" = ${access.campaignId}
+      GROUP BY "precinctId"`,
+    db.precinct.findMany({ where: { campaignId: access.campaignId }, select: { id: true, name: true } }),
   ]);
+  const doorsIn = new Map(counts.map((c) => [c.precinctId, c.doors]));
 
   const items = precincts
-    .map((p) => ({ precinctId: p.id, name: p.name, voterCount: p._count.voters }))
+    .filter((p) => doorsIn.has(p.id))
+    .map((p) => ({ precinctId: p.id, name: p.name, doorCount: doorsIn.get(p.id)! }))
     .sort((a, b) => a.name.localeCompare(b.name, "en", { numeric: true }));
-  if (unassigned > 0) items.push({ precinctId: NO_PRECINCT, name: "No precinct", voterCount: unassigned });
+  const unassigned = doorsIn.get(null);
+  if (unassigned) items.push({ precinctId: NO_PRECINCT, name: "No precinct", doorCount: unassigned });
   return NextResponse.json({ items });
 }

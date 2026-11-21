@@ -20,7 +20,6 @@ interface NavItem {
   id: Module;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  hint?: string;
   ownerOnly?: boolean;
 }
 
@@ -28,7 +27,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "Overview",
     items: [
-      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, hint: "Live metrics" },
+      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     ],
   },
   {
@@ -42,7 +41,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "Outreach",
     items: [
-      { id: "canvass", label: "Canvassing", icon: DoorOpen, hint: "Walk lists" },
+      { id: "canvass", label: "Canvassing", icon: DoorOpen },
       { id: "phonebank", label: "Phone Bank", icon: PhoneCall },
     ],
   },
@@ -100,7 +99,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                       onNavigate?.();
                     }}
                     className={cn(
-                      "w-full group flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                      "w-full group flex min-h-11 md:min-h-0 items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                       isActive
                         ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm font-medium"
                         : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -111,16 +110,6 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                       className={cn("size-4", isActive ? "" : "text-muted-foreground group-hover:text-sidebar-accent-foreground")}
                     />
                     <span className="flex-1 text-left">{item.label}</span>
-                    {item.hint && (
-                      <span className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded-full border",
-                        isActive
-                          ? "border-sidebar-primary-foreground/30 text-sidebar-primary-foreground/80"
-                          : "border-border text-muted-foreground"
-                      )}>
-                        {item.hint}
-                      </span>
-                    )}
                   </button>
                 </li>
               );

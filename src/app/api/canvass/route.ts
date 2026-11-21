@@ -21,16 +21,27 @@ export async function GET(req: NextRequest) {
   if (outcome) where.outcome = outcome;
   if (precinctId) where.voter = { precinctId };
 
-  const logs = await db.canvassLog.findMany({
-    where,
-    orderBy: { contactedAt: "desc" },
-    include: {
-      voter: { select: { firstName: true, lastName: true, registeredAddress: true, precinct: { select: { name: true } } } },
-      volunteer: { select: { firstName: true, lastName: true } },
-      household: { select: { address: true } },
-    },
-    take: limit,
-  });
+  const [logs, [summary]] = await Promise.all([
+    db.canvassLog.findMany({
+      where,
+      orderBy: { contactedAt: "desc" },
+      include: {
+        voter: { select: { firstName: true, lastName: true, registeredAddress: true, precinct: { select: { name: true } } } },
+        volunteer: { select: { firstName: true, lastName: true } },
+        household: { select: { address: true } },
+      },
+      take: limit,
+    }),
+    // Campaign-wide totals: never narrowed by the outcome filter or capped by the page size.
+    // A door is a household; a visit without one counts the voter (or the visit) as its own door.
+    db.$queryRaw<{ attempts: number; doors: number; contacted: number; notHome: number; yardSigns: number }[]>`
+      SELECT COUNT(*)::int AS "attempts",
+             COUNT(DISTINCT COALESCE("householdId", "voterId", "id"))::int AS "doors",
+             (COUNT(*) FILTER (WHERE "outcome" = 'contacted'))::int AS "contacted",
+             (COUNT(*) FILTER (WHERE "outcome" = 'not-home'))::int AS "notHome",
+             (COUNT(*) FILTER (WHERE "yardSign"))::int AS "yardSigns"
+      FROM "CanvassLog" WHERE "campaignId" = ${access.campaignId}`,
+  ]);
 
   return NextResponse.json({
     items: logs.map((l) => ({
@@ -38,7 +49,34 @@ export async function GET(req: NextRequest) {
       contactedAt: l.contactedAt.toISOString(),
       createdAt: l.createdAt.toISOString(),
     })),
+    summary,
   });
+}
+
+// Undo a visit just logged. Visits that changed the voter record (support level,
+// yard sign) are refused, since the voter's earlier values aren't kept to restore.
+export async function DELETE(req: NextRequest) {
+  const sp = req.nextUrl.searchParams;
+  const access = await requireCampaignAccess(sp.get("campaignId"));
+  if ("error" in access) return access.error;
+
+  const log = await db.canvassLog.findFirst({
+    where: { id: sp.get("id") ?? "", campaignId: access.campaignId },
+    select: { id: true, volunteerId: true, supportLevel: true, yardSign: true },
+  });
+  if (!log) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
+  if (log.volunteerId) {
+    const err = await assertCanActAsVolunteer(access, log.volunteerId);
+    if (err) return err;
+  } else if (access.role !== "owner") {
+    return NextResponse.json({ error: "Only the campaign owner can remove this visit" }, { status: 403 });
+  }
+  if (log.supportLevel || log.yardSign) {
+    return NextResponse.json({ error: "This visit updated the voter's record. Edit the voter instead." }, { status: 409 });
+  }
+
+  await db.canvassLog.delete({ where: { id: log.id } });
+  return NextResponse.json({ ok: true });
 }
 
 export async function POST(req: NextRequest) {

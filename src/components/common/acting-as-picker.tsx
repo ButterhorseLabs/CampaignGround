@@ -17,11 +17,13 @@ import type { Volunteer } from "@/lib/types";
  * can only act as the roster entry linked to their own login (the API enforces
  * the same rule), so they see their name, or a button to add themselves.
  */
-export function ActingAsPicker({ label, campaignId, value, onChange }: {
+export function ActingAsPicker({ label, campaignId, value, onChange, error }: {
   label: string;
   campaignId: string | null;
   value: string;
   onChange: (volunteerId: string) => void;
+  /** Shown under the picker, e.g. when someone taps a door before choosing who's canvassing. */
+  error?: string;
 }) {
   const id = useId();
   const qc = useQueryClient();
@@ -66,7 +68,7 @@ export function ActingAsPicker({ label, campaignId, value, onChange }: {
             ? "You're not on the volunteer roster yet."
             : "No volunteers yet. Add yourself to start."}
         </span>
-        <Button type="button" size="sm" variant="outline" className="h-8" onClick={addSelf} disabled={saving}>
+        <Button type="button" size="sm" variant="outline" className="h-11 md:h-8" onClick={addSelf} disabled={saving}>
           {saving ? <Loader2 className="size-3.5 mr-1 animate-spin" /> : <UserPlus className="size-3.5 mr-1" />}
           {role === "member" ? "Add me as a volunteer" : "Add yourself as a volunteer"}
         </Button>
@@ -84,18 +86,26 @@ export function ActingAsPicker({ label, campaignId, value, onChange }: {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Label htmlFor={id} className="text-xs whitespace-nowrap">{label}</Label>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger id={id} className="h-8 w-[220px] text-xs">
-          <SelectValue placeholder="Select a volunteer…" />
-        </SelectTrigger>
-        <SelectContent>
-          {volunteers.map((v) => (
-            <SelectItem key={v.id} value={v.id}>{v.firstName} {v.lastName}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+    <div>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Label htmlFor={id} className="text-xs whitespace-nowrap">{label}</Label>
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger
+            id={id}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${id}-error` : undefined}
+            className="w-full sm:w-[240px] text-sm md:text-xs data-[size=default]:h-11 md:data-[size=default]:h-8"
+          >
+            <SelectValue placeholder="Choose a volunteer…" />
+          </SelectTrigger>
+          <SelectContent>
+            {volunteers.map((v) => (
+              <SelectItem key={v.id} value={v.id} className="min-h-11 md:min-h-0">{v.firstName} {v.lastName}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {error && <p id={`${id}-error`} role="alert" className="mt-1.5 text-xs font-medium text-destructive">{error}</p>}
     </div>
   );
 }

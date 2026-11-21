@@ -87,7 +87,7 @@ export function Topbar() {
       <Button
         variant="ghost"
         size="icon"
-        className="md:hidden"
+        className="size-11 md:hidden"
         onClick={() => setSidebar(true)}
         aria-label="Open menu"
       >
@@ -102,7 +102,7 @@ export function Topbar() {
       {memberships.length > 1 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="h-9 text-xs max-w-[96px] sm:max-w-[160px]">
+            <Button variant="outline" className="h-11 md:h-9 text-xs max-w-[96px] sm:max-w-[160px]">
               <span className="truncate">{currentMembership?.campaignName ?? "Select campaign"}</span>
               <ChevronsUpDown className="size-3.5 flex-shrink-0" aria-hidden />
             </Button>
@@ -129,14 +129,14 @@ export function Topbar() {
       )}
 
       {isPlatformOwner && (
-        <Button variant="outline" size="icon" aria-label="Platform admin" asChild>
+        <Button variant="outline" size="icon" className="size-11 md:size-9" aria-label="Platform admin" asChild>
           <Link href="/platform-admin">
             <Shield className="size-4" aria-hidden />
           </Link>
         </Button>
       )}
 
-      <div className="flex items-center gap-1 sm:gap-2 sm:pl-2 sm:border-l">
+      <div className="flex items-center gap-0 sm:gap-2 sm:pl-2 sm:border-l">
         <Avatar className="size-8 hidden sm:flex">
           <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
             {initials(displayName)}
@@ -149,6 +149,7 @@ export function Topbar() {
         <Button
           variant="ghost"
           size="icon"
+          className="size-11 md:size-9"
           aria-label={mounted && resolvedTheme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
           onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
         >
@@ -161,6 +162,7 @@ export function Topbar() {
         <Button
           variant="ghost"
           size="icon"
+          className="size-11 md:size-9"
           aria-label="Sign out"
           onClick={() => signOut({ callbackUrl: "/login" })}
         >
@@ -231,7 +233,7 @@ function InviteTeammateDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon" aria-label="Invite teammate">
+        <Button variant="outline" size="icon" className="size-11 md:size-9" aria-label="Invite teammate">
           <UserPlus className="size-4" aria-hidden />
         </Button>
       </DialogTrigger>

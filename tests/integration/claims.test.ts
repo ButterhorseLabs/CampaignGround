@@ -149,3 +149,19 @@ describe("acting as a volunteer", () => {
     expect((await claimReq(owner.cookie, "DELETE", voterSolo, memberVolunteerId)).status).toBe(200);
   });
 });
+
+describe("undoing a visit", () => {
+  test("a member can undo their own visit but not a teammate's", async () => {
+    const logAs = async (cookie: string, volunteerId: string) => {
+      const res = await fetchAs(cookie, "/api/canvass", {
+        method: "POST",
+        headers: json,
+        body: JSON.stringify({ campaignId, voterId: voterSolo, volunteerId, outcome: "not-home" }),
+      });
+      return (await res.json()).id as string;
+    };
+    const undo = (id: string) => fetchAs(memberCookie, `/api/canvass?campaignId=${campaignId}&id=${id}`, { method: "DELETE" });
+    expect((await undo(await logAs(owner.cookie, otherVolunteerId))).status).toBe(403);
+    expect((await undo(await logAs(memberCookie, memberVolunteerId))).status).toBe(200);
+  });
+});

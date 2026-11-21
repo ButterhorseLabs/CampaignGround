@@ -26,7 +26,7 @@ const ACCENTS: Record<string, { bg: string; fg: string }> = {
 export function StatCard({ icon: Icon, label, value, sub, trend, accent = "primary", className, children }: Props) {
   const a = ACCENTS[accent];
   return (
-    <div className={cn("rounded-xl border bg-card p-4 shadow-sm hover:shadow-md transition-shadow", className)}>
+    <div className={cn("rounded-xl border bg-card p-4 shadow-sm", className)}>
       <div className="flex items-start justify-between mb-3">
         <div className={cn("size-9 rounded-lg grid place-items-center", a.bg)}>
           <Icon className={cn("size-4.5", a.fg)} />
@@ -41,8 +41,8 @@ export function StatCard({ icon: Icon, label, value, sub, trend, accent = "prima
         )}
       </div>
       <div className="text-2xl font-semibold tracking-tight tabular-nums">{value}</div>
-      <div className="text-[12px] text-muted-foreground mt-0.5">{label}</div>
-      {sub && <div className="text-[11px] text-muted-foreground/80 mt-1">{sub}</div>}
+      <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mt-1">{label}</div>
+      {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
       {children}
     </div>
   );
