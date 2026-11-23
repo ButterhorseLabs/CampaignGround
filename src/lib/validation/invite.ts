@@ -7,6 +7,6 @@ export const createInviteSchema = z.object({
 });
 
 export const acceptInviteNewUserSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().trim().min(1, "Enter your name.").max(200),
   password: passwordSchema,
 });

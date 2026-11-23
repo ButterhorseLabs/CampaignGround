@@ -642,8 +642,9 @@ function OnboardingChecklist({ totals, isOwner, onImport }: {
     },
     {
       title: "Add your first volunteer",
-      done: totals.volunteers > 0,
-      detail: "Keep track of who is helping, then assign tasks and outreach.",
+      // Signup puts the owner on the roster, so the first volunteer is the second entry.
+      done: totals.volunteers > 1,
+      detail: "You're on the roster already. Add the people helping you, then assign tasks and outreach.",
       action: <ModuleLink module="volunteers" className={linkButton()}>Go to Volunteers</ModuleLink>,
     },
   ];

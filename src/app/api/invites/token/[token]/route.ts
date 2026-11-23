@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
-import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rate-limit"
 
 // GET /api/invites/token/[token] — public lookup for the accept page.
 // Never returns the token itself or unrelated campaign data.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const ip = getClientIp(await headers());
   if (!checkRateLimit(`invite-lookup:${ip}`, { max: 30, windowMs: 60_000 })) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return tooManyRequests();
   }
 
   const { token } = await params;

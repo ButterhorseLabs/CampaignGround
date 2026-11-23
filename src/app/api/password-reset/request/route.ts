@@ -4,7 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { parseBody } from "@/lib/api-validate";
 import { passwordResetRequestSchema } from "@/lib/validation/password-reset";
-import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rate-limit"
 import { sendPasswordResetEmail } from "@/lib/email";
 
 const TOKEN_TTL_MS = 60 * 60 * 1000;
@@ -14,7 +14,7 @@ const TOKEN_TTL_MS = 60 * 60 * 1000;
 export async function POST(req: NextRequest) {
   const ip = getClientIp(await headers());
   if (!checkRateLimit(`password-reset:${ip}`, { max: 5, windowMs: 60_000 })) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return tooManyRequests();
   }
 
   const parsed = await parseBody(req, passwordResetRequestSchema);

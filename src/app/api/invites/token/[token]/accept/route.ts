@@ -6,13 +6,13 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { parseBody } from "@/lib/api-validate";
 import { acceptInviteNewUserSchema } from "@/lib/validation/invite";
-import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rate-limit"
 import { linkOwnVolunteer } from "@/lib/own-volunteer";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const ip = getClientIp(await headers());
   if (!checkRateLimit(`invite-accept:${ip}`, { max: 10, windowMs: 60_000 })) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return tooManyRequests();
   }
 
   const { token } = await params;

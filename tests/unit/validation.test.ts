@@ -15,7 +15,7 @@ const validSignup = {
   candidateName: "Jordan Avery",
   officeSought: "City Council",
   district: "District 1",
-  electionDate: "2026-11-03",
+  electionDate: new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10),
 };
 
 describe("passwordSchema", () => {
@@ -43,13 +43,19 @@ describe("signupSchema", () => {
     expect(signupSchema.safeParse(rest).success).toBe(false);
   });
 
-  test("optional fields may be omitted", () => {
-    expect(signupSchema.safeParse(validSignup).success).toBe(true);
+  test("a nonpartisan race omits party", () => {
+    expect(signupSchema.safeParse({ ...validSignup, party: undefined }).success).toBe(true);
   });
 
-  test("rejects a negative voteGoal", () => {
-    const result = signupSchema.safeParse({ ...validSignup, voteGoal: -5 });
+  test("rejects an election date more than 4 years out", () => {
+    const far = new Date(Date.now() + 5 * 365 * 86_400_000).toISOString().slice(0, 10);
+    expect(signupSchema.safeParse({ ...validSignup, electionDate: far }).success).toBe(false);
+  });
+
+  test("rejects a blank name with a message a person can act on", () => {
+    const result = signupSchema.safeParse({ ...validSignup, name: "   " });
     expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe("Enter your name.");
   });
 });
 

@@ -23,11 +23,14 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         const ip = getClientIp(new Headers(req?.headers as Record<string, string> | undefined));
-        if (!checkRateLimit(`login:${credentials.email.toLowerCase()}`, { max: 10, windowMs: 15 * 60_000 })) {
-          return null;
-        }
-        if (!checkRateLimit(`login-ip:${ip}`, { max: 30, windowMs: 15 * 60_000 })) {
-          return null;
+        // A lockout is its own error so the login page can say "wait", not
+        // "wrong password": resetting the password doesn't lift it.
+        // The login page matches this exact message.
+        if (
+          !checkRateLimit(`login:${credentials.email.toLowerCase()}`, { max: 10, windowMs: 15 * 60_000 }) ||
+          !checkRateLimit(`login-ip:${ip}`, { max: 30, windowMs: 15 * 60_000 })
+        ) {
+          throw new Error("RateLimited");
         }
 
         const user = await db.user.findUnique({ where: { email: credentials.email } });

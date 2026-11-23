@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { requireCampaignAccess } from "@/lib/api-auth";
 import { parseBody } from "@/lib/api-validate";
 import { createInviteSchema } from "@/lib/validation/invite";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, tooManyRequests } from "@/lib/rate-limit"
 import { sendInviteEmail, reactivateBounce } from "@/lib/email";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   if ("error" in access) return access.error;
 
   if (!checkRateLimit(`invite-create:${access.userId}`, { max: 20, windowMs: 60 * 60_000 })) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return tooManyRequests();
   }
 
   const [campaign, inviter] = await Promise.all([

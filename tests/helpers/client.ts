@@ -4,6 +4,9 @@ export function uniqueEmail(prefix = "test"): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}@example.com`;
 }
 
+/** An election date signup accepts: 60 days out (signup rejects past dates). */
+export const futureElectionDate = () => new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
+
 // POST /api/signup and the credentials login are rate-limited per IP (see
 // src/app/api/signup/route.ts and src/lib/auth.ts). Every signup and login in
 // the test suite fakes a distinct X-Forwarded-For so independent tests/files
@@ -106,7 +109,7 @@ export async function signupAndLogin(
       candidateName: overrides?.candidateName ?? "Test Candidate",
       officeSought: overrides?.officeSought ?? "City Council",
       district: overrides?.district ?? "District 1",
-      electionDate: overrides?.electionDate ?? "2026-11-03",
+      electionDate: overrides?.electionDate ?? futureElectionDate(),
     }),
   });
   if (!signupRes.ok) {

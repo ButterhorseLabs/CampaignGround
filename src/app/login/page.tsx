@@ -5,17 +5,8 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { AuthShell } from "@/components/auth/auth-shell";
+import { AuthShell, authLinkClass } from "@/components/auth/auth-shell";
+import { AuthField, authControlClass } from "@/components/auth/auth-field";
 
 export default function LoginPage() {
   return (
@@ -25,6 +16,8 @@ export default function LoginPage() {
   );
 }
 
+type LoginError = "wrong" | "locked" | "offline";
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -32,9 +25,10 @@ function LoginForm() {
   const returnTo = searchParams.get("next") ?? searchParams.get("callbackUrl");
   const created = searchParams.get("created") === "1";
   const reset = searchParams.get("reset") === "1";
-  const [email, setEmail] = useState(searchParams.get("email") ?? "");
+  const prefilled = searchParams.get("email") ?? "";
+  const [email, setEmail] = useState(prefilled);
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<LoginError | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -42,86 +36,88 @@ function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
+    const result = await signIn("credentials", { email, password, redirect: false }).catch(() => null);
     setLoading(false);
-    if (result?.error) {
-      setError("Email or password is incorrect.");
+    if (!result) {
+      setError("offline");
+      return;
+    }
+    if (result.error) {
+      // lib/auth.ts throws "RateLimited" when the login is locked out.
+      setError(result.error === "RateLimited" ? "locked" : "wrong");
       return;
     }
     router.push(sameOriginPath(returnTo) ?? "/dashboard");
     router.refresh();
   }
 
+  const wrong = error === "wrong";
+
   return (
-    <AuthShell>
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Log in</CardTitle>
-          <CardDescription>Welcome back. Log in to manage your campaign.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {(created || reset) && (
-              <p role="status" className="rounded-md border bg-muted/50 px-3 py-2 text-sm">
-                {created
-                  ? "Your account was created. Log in to continue."
-                  : "Password updated. Log in with your new password."}
-              </p>
-            )}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-baseline justify-between gap-2">
-                <Label htmlFor="password">Password</Label>
-                <Link href="/forgot-password" className="text-xs text-primary underline underline-offset-2">
-                  Forgot your password?
-                </Link>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            {error && (
-              <p role="alert" className="text-sm text-destructive">
-                {error}{" "}
+    <AuthShell
+      title="Log in"
+      description="Welcome back. Log in to manage your campaign."
+      footer={
+        <>
+          New here?{" "}
+          <Link href="/signup" className={authLinkClass}>
+            Start your campaign
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {(created || reset) && (
+          <p role="status" className="rounded-md bg-muted/50 px-3 py-2 text-sm">
+            {created ? "Your account was created. Log in to continue." : "Password updated. Log in with your new password."}
+          </p>
+        )}
+        <AuthField
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          aria-invalid={wrong || undefined}
+          aria-describedby={error ? "login-error" : undefined}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <AuthField
+          id="password"
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          // After signup or a reset the email is already filled in.
+          autoFocus={!!prefilled}
+          aria-invalid={wrong || undefined}
+          aria-describedby={error ? "login-error" : undefined}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        {error ? (
+          <p id="login-error" role="alert" className="text-sm text-destructive">
+            {error === "locked" && "Too many attempts. Wait 15 minutes, then try again."}
+            {error === "offline" && "No connection. Try again when you're back online."}
+            {wrong && (
+              <>
+                Email or password is incorrect.{" "}
                 <Link href="/forgot-password" className="underline underline-offset-2">
                   Reset your password
                 </Link>
-              </p>
+              </>
             )}
-            <Button type="submit" disabled={loading}>
-              {loading ? "Logging in…" : "Log in"}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter>
-          <p className="text-sm text-muted-foreground">
-            New here?{" "}
-            <Link href="/signup" className="text-primary underline underline-offset-2">
-              Start your campaign
-            </Link>
           </p>
-        </CardFooter>
-      </Card>
+        ) : (
+          <Link href="/forgot-password" className={`${authLinkClass} self-start text-sm`}>
+            Forgot your password?
+          </Link>
+        )}
+        <Button type="submit" className={authControlClass} disabled={loading}>
+          {loading ? "Logging in…" : "Log in"}
+        </Button>
+      </form>
     </AuthShell>
   );
 }

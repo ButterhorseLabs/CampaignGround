@@ -64,9 +64,15 @@ describe("password reset", () => {
     const token = await insertToken(user.id, new Date(Date.now() + 60 * 60_000));
     const other = await insertToken(user.id, new Date(Date.now() + 60 * 60_000));
     const newPassword = "a brand new passphrase 42";
+    const check = async (t: string) =>
+      (await (await fetch(`${TEST_BASE_URL}/api/password-reset/confirm?token=${t}`, { headers: { "X-Forwarded-For": uniqueIp() } })).json()).valid;
+    expect(await check(token)).toBe(true);
 
     const res = await post("/api/password-reset/confirm", { token, password: newPassword });
     expect(res.status).toBe(200);
+    // The page can say a used link is dead before anyone types a password.
+    expect(await check(token)).toBe(false);
+    expect(await check("not-a-token")).toBe(false);
 
     expect(await sessionEmail(await login(account.email, account.password))).toBeUndefined();
     expect(await sessionEmail(await login(account.email, newPassword))).toBe(account.email);

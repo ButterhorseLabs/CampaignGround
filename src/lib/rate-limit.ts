@@ -2,6 +2,12 @@
 // instance/replica — if this app is ever scaled horizontally, this needs to
 // move to a shared store (e.g. Redis) or the limit becomes per-instance.
 
+import { NextResponse } from "next/server";
+
+/** The 429 every rate-limited route returns, in words a person can act on. */
+export const tooManyRequests = () =>
+  NextResponse.json({ error: "Too many attempts. Wait a minute, then try again." }, { status: 429 });
+
 type Bucket = { count: number; resetAt: number };
 
 const buckets = new Map<string, Bucket>();

@@ -3,17 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { AuthShell } from "@/components/auth/auth-shell";
+import { AuthShell, authLinkClass } from "@/components/auth/auth-shell";
+import { AuthField, authControlClass } from "@/components/auth/auth-field";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -32,10 +23,13 @@ export default function ForgotPasswordPage() {
     }).catch(() => null);
     setLoading(false);
     if (!r?.ok) {
+      const body = await r?.json().catch(() => ({}));
       setError(
-        r?.status === 429
-          ? "Too many attempts. Wait a minute, then try again."
-          : "Couldn't send the reset link. Check the email address and try again."
+        !r
+          ? "No connection. Try again when you're back online."
+          : r.status === 400
+            ? (body?.issues?.[0]?.message ?? "Enter an email like name@example.com.")
+            : (body?.error ?? "Couldn't send the reset link. Try again in a minute.")
       );
       return;
     }
@@ -43,46 +37,39 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <AuthShell>
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Reset your password</CardTitle>
-          <CardDescription>Enter your account email and we&apos;ll send you a link to choose a new password.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {sent ? (
-            <p role="status" className="text-sm">
-              If an account exists for that email, we sent a reset link. It expires in 1 hour.
-            </p>
-          ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" disabled={loading}>
-                {loading ? "Sending…" : "Send reset link"}
-              </Button>
-            </form>
-          )}
-        </CardContent>
-        <CardFooter>
-          <p className="text-sm text-muted-foreground">
-            Remembered it?{" "}
-            <Link href="/login" className="text-primary underline underline-offset-2">
-              Log in
-            </Link>
-          </p>
-        </CardFooter>
-      </Card>
+    <AuthShell
+      title="Reset your password"
+      description="Enter your account email and we'll send you a link to choose a new password."
+      footer={
+        <>
+          Remembered it?{" "}
+          <Link href="/login" className={authLinkClass}>
+            Log in
+          </Link>
+        </>
+      }
+    >
+      {sent ? (
+        <p role="status" className="text-sm">
+          If an account exists for that email, we sent a reset link. It expires in 1 hour.
+        </p>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <AuthField
+            id="email"
+            label="Email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          <Button type="submit" className={authControlClass} disabled={loading}>
+            {loading ? "Sending…" : "Send reset link"}
+          </Button>
+        </form>
+      )}
     </AuthShell>
   );
 }

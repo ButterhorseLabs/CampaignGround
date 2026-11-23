@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { parseBody } from "@/lib/api-validate";
 import { signupSchema } from "@/lib/validation/signup";
-import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rate-limit"
 import { linkOwnVolunteer } from "@/lib/own-volunteer";
 
 // MAX_USERS caps self-service signups on this server; unset means unlimited.
@@ -26,7 +26,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const ip = getClientIp(await headers());
   if (!checkRateLimit(`signup:${ip}`, { max: 5, windowMs: 60_000 })) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return tooManyRequests();
   }
 
   if (!(await signupsOpen())) {
@@ -35,22 +35,11 @@ export async function POST(req: NextRequest) {
 
   const parsed = await parseBody(req, signupSchema);
   if ("error" in parsed) return parsed.error;
-  const {
-    name,
-    email,
-    password,
-    candidateName,
-    officeSought,
-    district,
-    party,
-    electionDate,
-    voteGoal,
-    fundraisingGoalCents,
-  } = parsed.data;
+  const { name, email, password, candidateName, officeSought, district, party, electionDate } = parsed.data;
 
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) {
-    return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 });
+    return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -65,8 +54,9 @@ export async function POST(req: NextRequest) {
         district,
         party,
         electionDate: new Date(electionDate),
-        voteGoal: voteGoal ?? 0,
-        fundraisingGoalCents: fundraisingGoalCents ?? 0,
+        // Set later from the dashboard; 0 means no goal yet.
+        voteGoal: 0,
+        fundraisingGoalCents: 0,
       },
     });
     await tx.campaignMembership.create({

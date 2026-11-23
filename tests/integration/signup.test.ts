@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { fetchAs, login, signupAndLogin, uniqueEmail } from "../helpers/client";
+import { fetchAs, futureElectionDate, login, signupAndLogin, uniqueEmail } from "../helpers/client";
 import { TEST_BASE_URL } from "../setup";
 import { testDb } from "../helpers/testDb";
 
@@ -59,11 +59,55 @@ describe("POST /api/signup", () => {
         candidateName: "X",
         officeSought: "Y",
         district: "Z",
-        electionDate: "2026-11-03",
+        electionDate: futureElectionDate(),
       }),
     });
 
     expect(res.status).toBe(409);
+  });
+
+  test("rejects a past election date and an unknown party, per field", async () => {
+    const res = await fetch(`${TEST_BASE_URL}/api/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Forwarded-For": "10.1.2.4" },
+      body: JSON.stringify({
+        name: "Past Date",
+        email: uniqueEmail("past"),
+        password: "correcthorsebatterystaple1",
+        candidateName: "Past Date",
+        officeSought: "City Council",
+        district: "Ward 3",
+        party: "Democrat",
+        electionDate: "2020-11-03",
+      }),
+    });
+    expect(res.status).toBe(400);
+    const paths = (await res.json()).issues.map((i: { path: string }) => i.path).sort();
+    expect(paths).toEqual(["electionDate", "party"]);
+  });
+});
+
+describe("login lockout", () => {
+  test("after 10 tries the error says locked out, not wrong password", async () => {
+    const email = uniqueEmail("locked");
+    const attempt = async () => {
+      const csrfRes = await fetch(`${TEST_BASE_URL}/api/auth/csrf`);
+      const { csrfToken } = await csrfRes.json();
+      const res = await fetch(`${TEST_BASE_URL}/api/auth/callback/credentials`, {
+        method: "POST",
+        redirect: "manual",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Cookie: csrfRes.headers.getSetCookie().map((c) => c.split(";")[0]).join("; "),
+          "X-Forwarded-For": `10.9.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+        },
+        body: new URLSearchParams({ email, password: "wrong-password-entirely", csrfToken, json: "true" }),
+      });
+      const body: { url: string } = await res.json();
+      return body.url;
+    };
+    for (let i = 0; i < 10; i++) expect(await attempt()).toContain("error=CredentialsSignin");
+    expect(await attempt()).toContain("error=RateLimited");
   });
 });
 
