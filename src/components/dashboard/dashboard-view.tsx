@@ -15,6 +15,7 @@ import { ImportVotersDialog } from "@/components/voters/import-voters-dialog";
 import { OUTCOME_INFO as CANVASS_OUTCOMES } from "@/components/canvass/log-canvass-dialog";
 import { OUTCOME_INFO as CALL_OUTCOMES } from "@/components/phonebank/log-call-dialog";
 import { SetGoalsDialog } from "./set-goals-dialog";
+import { TASK_STATUS } from "@/components/tasks/task-fields";
 import {
   Users,
   HeartHandshake,
@@ -37,13 +38,6 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { formatCompactCurrency, formatCurrency, formatDate, formatTime, relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-
-const TASK_STATUS: Record<string, { label: string; color: string }> = {
-  todo: { label: "To do", color: "slate" },
-  "in-progress": { label: "In progress", color: "violet" },
-  blocked: { label: "Blocked", color: "amber" },
-  done: { label: "Done", color: "emerald" },
-};
 
 const METHOD_LABEL: Record<string, string> = { online: "Online", check: "Check", cash: "Cash", "in-kind": "In-kind" };
 

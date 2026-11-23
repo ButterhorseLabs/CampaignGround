@@ -3,7 +3,11 @@ import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { requireCampaignAccess, assertBelongsToCampaign } from "@/lib/api-auth";
 import { parseBody } from "@/lib/api-validate";
-import { taskCreateSchema, taskPatchSchema } from "@/lib/validation/task";
+import { taskCreateSchema, taskIdSchema, taskPatchSchema } from "@/lib/validation/task";
+
+const TASK_LIMIT = 200;
+// Priority is stored as a word, so the database would sort it alphabetically.
+const PRIORITY_RANK: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -19,18 +23,24 @@ export async function GET(req: NextRequest) {
   if (priority) where.priority = priority;
   if (assignedTo) where.assignedVolunteerId = assignedTo;
 
+  // Earliest due first, so if the cap bites it drops the work furthest out.
   const tasks = await db.task.findMany({
     where,
-    orderBy: [{ priority: "desc" }, { dueDate: "asc" }],
+    orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
     include: {
       volunteer: { select: { firstName: true, lastName: true } },
       voter: { select: { firstName: true, lastName: true } },
     },
-    take: 200,
+    take: TASK_LIMIT + 1,
   });
+  const truncated = tasks.length > TASK_LIMIT;
+  const items = tasks
+    .slice(0, TASK_LIMIT)
+    .sort((a, b) => (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9));
 
   return NextResponse.json({
-    items: tasks.map((t) => ({
+    truncated,
+    items: items.map((t) => ({
       ...t,
       dueDate: t.dueDate?.toISOString() ?? null,
       createdAt: t.createdAt.toISOString(),
@@ -57,7 +67,7 @@ export async function PATCH(req: NextRequest) {
   if (priority) data.priority = priority;
   if (dueDate !== undefined) data.dueDate = dueDate ? new Date(dueDate) : null;
   if (title !== undefined) data.title = title;
-  if (description !== undefined) data.description = description;
+  if (description !== undefined) data.description = description || null;
   if (assignedVolunteerId !== undefined) {
     data.volunteer = assignedVolunteerId ? { connect: { id: assignedVolunteerId } } : { disconnect: true };
   }
@@ -78,7 +88,7 @@ export async function POST(req: NextRequest) {
   const task = await db.task.create({
     data: {
       title,
-      description,
+      description: description || null,
       priority: priority ?? "medium",
       dueDate: dueDate ? new Date(dueDate) : null,
       campaignId: access.campaignId,
@@ -87,4 +97,17 @@ export async function POST(req: NextRequest) {
     },
   });
   return NextResponse.json(task);
+}
+
+// Owners only, like deleting voters: a task is shared campaign record.
+export async function DELETE(req: NextRequest) {
+  const parsed = await parseBody(req, taskIdSchema);
+  if ("error" in parsed) return parsed.error;
+  const task = await db.task.findUnique({ where: { id: parsed.data.id }, select: { campaignId: true } });
+  if (!task) return NextResponse.json({ error: "not found" }, { status: 404 });
+  const access = await requireCampaignAccess(task.campaignId, { role: "owner" });
+  if ("error" in access) return access.error;
+
+  await db.task.delete({ where: { id: parsed.data.id } });
+  return NextResponse.json({ ok: true });
 }

@@ -163,6 +163,34 @@ describe("tasks", () => {
     expect(updated.status).toBe("done");
     expect(updated.priority).toBe("urgent");
   });
+
+  test("list sorts by priority rank, not alphabetically", async () => {
+    const fresh = await signupAndLogin();
+    for (const priority of ["low", "high", "medium", "urgent"]) {
+      await testDb.task.create({ data: { campaignId: fresh.campaignId, title: priority, priority } });
+    }
+    const body = await (await fetchAs(fresh.cookie, `/api/tasks?campaignId=${fresh.campaignId}`)).json();
+    expect(body.items.map((t: { priority: string }) => t.priority)).toEqual(["urgent", "high", "medium", "low"]);
+    expect(body.truncated).toBe(false);
+  });
+
+  test("a title of only spaces is rejected", async () => {
+    const res = await fetchAs(owner.cookie, "/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "   ", campaignId }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test("only owners can delete a task", async () => {
+    const task = await testDb.task.create({ data: { campaignId, title: "Delete me" } });
+    const del = (cookie: string) =>
+      fetchAs(cookie, "/api/tasks", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: task.id }) });
+    expect((await del(member.cookie)).status).toBe(403);
+    expect((await del(owner.cookie)).status).toBe(200);
+    expect(await testDb.task.findUnique({ where: { id: task.id } })).toBeNull();
+  });
 });
 
 describe("canvass logs", () => {

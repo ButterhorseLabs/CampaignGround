@@ -51,7 +51,7 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
   canvass: { title: "Canvassing", subtitle: "Walk lists and contact attempts at the door" },
   phonebank: { title: "Phone Bank", subtitle: "Call queue, scripts, and outcome tracking" },
   events: { title: "Events", subtitle: "Town halls, canvass kickoffs, and rallies" },
-  tasks: { title: "Tasks", subtitle: "Coordinator workflow and team assignments" },
+  tasks: { title: "Tasks", subtitle: "Who's doing what before election day" },
 };
 
 function initials(name: string) {
