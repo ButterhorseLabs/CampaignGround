@@ -108,7 +108,7 @@ function VoterDetailForm({
     <>
       <SheetHeader className="pb-3 border-b">
         <div className="flex items-center gap-3 pr-10">
-          <span aria-hidden><PersonAvatar first={voter.firstName} last={voter.lastName} size="lg" /></span>
+          <PersonAvatar first={voter.firstName} last={voter.lastName} />
           <div className="min-w-0">
             <SheetTitle>{voter.firstName} {voter.lastName}</SheetTitle>
             <SheetDescription className="text-xs">

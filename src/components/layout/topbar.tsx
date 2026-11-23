@@ -16,6 +16,7 @@ import { useInvites } from "@/lib/invites";
 import { toast } from "sonner";
 import { useSavingAction } from "@/lib/use-saving-action";
 import { useQueryClient } from "@tanstack/react-query";
+import { initials } from "@/lib/format";
 import {
   Dialog,
   DialogContent,
@@ -54,14 +55,6 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
   tasks: { title: "Tasks", subtitle: "Who's doing what before election day" },
 };
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return parts
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? "")
-    .join("");
-}
-
 export function Topbar() {
   const active = useApp((s) => s.active);
   const setSidebar = useApp((s) => s.setSidebar);
@@ -81,6 +74,7 @@ export function Topbar() {
   const [inviteOpen, setInviteOpen] = useState(false);
 
   const displayName = session?.user?.name ?? session?.user?.email ?? "—";
+  const nameParts = displayName.trim().split(/\s+/);
 
   return (
     <header className="h-16 border-b bg-card/60 backdrop-blur-sm flex items-center gap-2 sm:gap-3 px-4 md:px-6 sticky top-0 z-30">
@@ -137,9 +131,10 @@ export function Topbar() {
       )}
 
       <div className="flex items-center gap-0 sm:gap-2 sm:pl-2 sm:border-l">
-        <Avatar className="size-8 hidden sm:flex">
+        {/* Shown only beside the name, so it's decorative. */}
+        <Avatar aria-hidden className="size-8 hidden md:flex">
           <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
-            {initials(displayName)}
+            {initials(nameParts[0], nameParts.length > 1 ? nameParts.at(-1) : undefined)}
           </AvatarFallback>
         </Avatar>
         <div className="leading-tight hidden md:block">

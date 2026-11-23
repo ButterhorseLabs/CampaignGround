@@ -7,7 +7,6 @@ import { SUPPORT_LEVELS } from "@/lib/types";
 import { useApp, type Module } from "@/lib/store";
 import { StatCard } from "@/components/common/stat-card";
 import { FundraisingBar } from "@/components/common/fundraising-bar";
-import { PersonAvatar } from "@/components/common/person-avatar";
 import { PartyBadge, StatusBadge, statusDot } from "@/components/common/badges";
 import { ModuleLink } from "@/components/layout/module-link";
 import { useCurrentRole } from "@/lib/memberships";
@@ -372,7 +371,6 @@ export function DashboardView() {
                     <ul className="space-y-1">
                       {data.fundraising.recent.map((d) => (
                         <li key={d.id} className="flex items-center gap-3 py-1.5">
-                          <PersonAvatar first={d.donor?.firstName} last={d.donor?.lastName} size="sm" />
                           <div className="flex-1 min-w-0">
                             <div className="text-sm truncate">{d.donor ? `${d.donor.firstName} ${d.donor.lastName}` : "Unknown donor"}</div>
                             <div className="text-xs text-muted-foreground truncate">

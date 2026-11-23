@@ -181,7 +181,7 @@ export function VolunteersView() {
             return (
               <Card key={v.id} className="p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-3">
-                  <PersonAvatar first={v.firstName} last={v.lastName} size="lg" />
+                  <PersonAvatar first={v.firstName} last={v.lastName} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold truncate">{v.firstName} {v.lastName}</h3>

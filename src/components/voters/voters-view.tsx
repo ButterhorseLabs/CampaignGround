@@ -28,7 +28,6 @@ import {
   ArrowUpDown,
   X,
 } from "lucide-react";
-import { PersonAvatar } from "@/components/common/person-avatar";
 import { SupportBadge, PartyBadge } from "@/components/common/badges";
 import { PARTIES, SUPPORT_LEVELS, type Voter } from "@/lib/types";
 import { toast } from "sonner";
@@ -318,7 +317,6 @@ export function VotersView() {
                     onClick={() => setSelected(v)}
                     className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:bg-accent"
                   >
-                    <span aria-hidden><PersonAvatar first={v.firstName} last={v.lastName} size="sm" /></span>
                     <span className="block min-w-0 flex-1">
                       <span className="block font-medium truncate">{v.firstName} {v.lastName}</span>
                       <span className="block text-xs text-muted-foreground truncate">
@@ -373,7 +371,6 @@ export function VotersView() {
                       >
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-2.5">
-                            <PersonAvatar first={v.firstName} last={v.lastName} size="sm" />
                             <div className="min-w-0">
                               <button
                                 type="button"

@@ -29,7 +29,6 @@ import {
 } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { useCurrentRole } from "@/lib/memberships";
-import { PersonAvatar } from "@/components/common/person-avatar";
 import { StatCard } from "@/components/common/stat-card";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -140,7 +139,6 @@ export function DonorsView() {
                 return (
                   <div key={d.id} className="flex items-center gap-3">
                     <div className="text-xs font-medium text-muted-foreground w-5">#{i + 1}</div>
-                    <PersonAvatar first={d.firstName} last={d.lastName} size="sm" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium truncate">{d.firstName} {d.lastName}</span>
@@ -238,7 +236,6 @@ export function DonorsView() {
                   <tr key={d.id} className="border-b last:border-b-0 hover:bg-accent/30 transition-colors">
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2.5">
-                        <PersonAvatar first={d.firstName} last={d.lastName} size="sm" />
                         <div className="min-w-0">
                           <div className="font-medium truncate flex items-center gap-1.5">
                             {d.firstName} {d.lastName}
@@ -291,7 +288,6 @@ export function DonorsView() {
           <div className="space-y-1">
             {recentDonations.slice(0, 12).map((d) => (
               <div key={d.id} className="flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-accent/30">
-                <PersonAvatar first={d.donor?.firstName} last={d.donor?.lastName} size="sm" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm truncate">
                     {d.donor ? `${d.donor.firstName} ${d.donor.lastName}` : "Unknown donor"}
